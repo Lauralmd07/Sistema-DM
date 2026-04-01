@@ -4,22 +4,55 @@ import { useAuth } from '../contexts/AuthContext';
 import { Plus, X, GripVertical, Clock, FileText } from 'lucide-react';
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const ProcessCard = ({ process, onUpdate, onDelete }) => {
+// Droppable Column Component
+const DroppableColumn = ({ id, children, title, color, count }) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  
+  return (
+    <div
+      ref={setNodeRef}
+      className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-4 transition-all"
+      style={{
+        borderColor: isOver ? '#D4AF37' : '#3A3A3A',
+        backgroundColor: isOver ? 'rgba(212, 175, 55, 0.05)' : '#1E1E1E',
+      }}
+      data-testid={`kanban-column-${id}`}
+    >
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#3A3A3A]">
+        <div className="flex items-center space-x-2">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+          <h2 className="text-lg font-bold text-[#F5F5F5]">{title}</h2>
+        </div>
+        <span className="px-2 py-1 bg-[#2A2A2A] text-[#D4AF37] text-sm font-bold rounded">
+          {count}
+        </span>
+      </div>
+      <div className="space-y-3 min-h-[400px]">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+// Sortable Process Card Component
+const ProcessCard = ({ process, onUpdate }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [timelineEntry, setTimelineEntry] = useState({ date: '', description: '' });
   const [judgeSentence, setJudgeSentence] = useState(process.judge_sentence || '');
@@ -55,7 +88,7 @@ const ProcessCard = ({ process, onUpdate, onDelete }) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg p-4 mb-3 hover:border-[#D4AF37] transition-all"
+      className="bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg p-4 hover:border-[#D4AF37] transition-all"
       data-testid={`process-card-${process.id}`}
     >
       <div className="flex items-start justify-between mb-3">
@@ -63,7 +96,7 @@ const ProcessCard = ({ process, onUpdate, onDelete }) => {
           <button
             {...attributes}
             {...listeners}
-            className="mt-1 cursor-grab active:cursor-grabbing text-[#D4AF37] hover:text-[#E5C158]"
+            className="mt-1 cursor-grab active:cursor-grabbing text-[#D4AF37] hover:text-[#E5C158] touch-none"
           >
             <GripVertical size={20} />
           </button>
@@ -167,6 +200,7 @@ export const Processos = () => {
   const [processes, setProcesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [activeId, setActiveId] = useState(null);
   const [formData, setFormData] = useState({
     client_number: '',
     cpf: '',
@@ -175,9 +209,10 @@ export const Processos = () => {
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
     })
   );
 
@@ -223,18 +258,24 @@ export const Processos = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
+    
+    setActiveId(null);
     
     if (!over) return;
 
     const activeProcess = processes.find(p => p.id === active.id);
-    const overColumn = over.id;
-
-    if (activeProcess && ['new', 'in_progress', 'finished'].includes(overColumn)) {
-      if (activeProcess.status !== overColumn) {
+    
+    // Check if dropping on a column
+    if (over.id && ['new', 'in_progress', 'finished'].includes(over.id)) {
+      if (activeProcess && activeProcess.status !== over.id) {
         try {
-          await api.put(`/processes/${activeProcess.id}`, { status: overColumn });
+          await api.put(`/processes/${activeProcess.id}`, { status: over.id });
           await loadProcesses();
         } catch (error) {
           console.error('Error updating process status:', error);
@@ -257,6 +298,8 @@ export const Processos = () => {
     { id: 'in_progress', title: 'Em Andamento', color: '#FF9800' },
     { id: 'finished', title: 'Finalizados', color: '#4CAF50' },
   ];
+
+  const activeProcess = activeId ? processes.find(p => p.id === activeId) : null;
 
   return (
     <Layout>
@@ -284,6 +327,7 @@ export const Processos = () => {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -291,50 +335,49 @@ export const Processos = () => {
                 const columnProcesses = processes.filter(p => p.status === column.id);
                 
                 return (
-                  <div
+                  <DroppableColumn
                     key={column.id}
                     id={column.id}
-                    className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-4"
-                    data-testid={`kanban-column-${column.id}`}
+                    title={column.title}
+                    color={column.color}
+                    count={columnProcesses.length}
                   >
-                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#3A3A3A]">
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: column.color }}
-                        />
-                        <h2 className="text-lg font-bold text-[#F5F5F5]">{column.title}</h2>
-                      </div>
-                      <span className="px-2 py-1 bg-[#2A2A2A] text-[#D4AF37] text-sm font-bold rounded">
-                        {columnProcesses.length}
-                      </span>
-                    </div>
-
                     <SortableContext
                       items={columnProcesses.map(p => p.id)}
                       strategy={verticalListSortingStrategy}
                     >
-                      <div className="space-y-3 min-h-[400px]">
-                        {columnProcesses.length === 0 ? (
-                          <p className="text-center text-[#F5F5F5]/40 text-sm py-8">
-                            Arraste processos para cá
-                          </p>
-                        ) : (
-                          columnProcesses.map((process) => (
-                            <ProcessCard
-                              key={process.id}
-                              process={process}
-                              onUpdate={handleUpdateProcess}
-                              onDelete={() => {}}
-                            />
-                          ))
-                        )}
-                      </div>
+                      {columnProcesses.length === 0 ? (
+                        <p className="text-center text-[#F5F5F5]/40 text-sm py-8">
+                          Arraste processos para cá
+                        </p>
+                      ) : (
+                        columnProcesses.map((process) => (
+                          <ProcessCard
+                            key={process.id}
+                            process={process}
+                            onUpdate={handleUpdateProcess}
+                          />
+                        ))
+                      )}
                     </SortableContext>
-                  </div>
+                  </DroppableColumn>
                 );
               })}
             </div>
+            
+            <DragOverlay>
+              {activeProcess ? (
+                <div className="bg-[#2A2A2A] border-2 border-[#D4AF37] rounded-lg p-4 shadow-2xl">
+                  <div className="flex items-start space-x-3">
+                    <GripVertical size={20} className="text-[#D4AF37]" />
+                    <div>
+                      <h3 className="text-[#F5F5F5] font-bold">Cliente #{activeProcess.client_number}</h3>
+                      <p className="text-[#D4AF37] text-sm">{activeProcess.action_type}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
 
