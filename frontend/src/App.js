@@ -8,7 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Agenda } from './pages/Agenda';
 import { Processos } from './pages/Processos';
 import { Drive } from './pages/Drive';
-import { Financeiro } from './pages/Financeiro';
+import { FinanceiroPremium } from './pages/FinanceiroPremium';
 import './App.css';
 
 function App() {
@@ -59,7 +59,7 @@ function App() {
             path="/financeiro"
             element={
               <ProtectedRoute adminOnly>
-                <Financeiro />
+                <FinanceiroPremium />
               </ProtectedRoute>
             }
           />
