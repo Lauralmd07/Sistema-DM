@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,7 +15,6 @@ export const PremiumTable = ({
   columns,
   className = '',
   onRowClick,
-  virtualized = false,
 }) => {
   const table = useReactTable({
     data,
@@ -33,7 +32,6 @@ export const PremiumTable = ({
         border: `1px solid ${premiumTheme.border.primary}`,
       }}
     >
-      {/* Table Header */}
       <div 
         className="overflow-x-auto"
         style={{ backgroundColor: premiumTheme.background.secondary }}
@@ -50,9 +48,7 @@ export const PremiumTable = ({
                   >
                     {header.isPlaceholder ? null : (
                       <div
-                        className={`flex items-center space-x-2 ${
-                          header.column.getCanSort() ? 'cursor-pointer select-none' : ''
-                        }`}
+                        className={header.column.getCanSort() ? 'flex items-center space-x-2 cursor-pointer select-none' : 'flex items-center space-x-2'}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <span>
@@ -63,12 +59,9 @@ export const PremiumTable = ({
                         </span>
                         {header.column.getCanSort() && (
                           <span>
-                            {{
-                              asc: <ArrowUp className=\"w-4 h-4\" />,
-                              desc: <ArrowDown className=\"w-4 h-4\" />,
-                            }[header.column.getIsSorted()] ?? (
-                              <ChevronsUpDown className=\"w-4 h-4 opacity-30\" />
-                            )}
+                            {header.column.getIsSorted() === 'asc' && <ArrowUp className="w-4 h-4" />}
+                            {header.column.getIsSorted() === 'desc' && <ArrowDown className="w-4 h-4" />}
+                            {!header.column.getIsSorted() && <ChevronsUpDown className="w-4 h-4 opacity-30" />}
                           </span>
                         )}
                       </div>
@@ -88,11 +81,15 @@ export const PremiumTable = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05, duration: 0.3 }}
-                className={`transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                className={`transition-colors hover:bg-opacity-50 ${onRowClick ? 'cursor-pointer' : ''}`}
                 style={{
-                  ':hover': {
-                    backgroundColor: premiumTheme.background.quaternary,
-                  },
+                  backgroundColor: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = premiumTheme.background.quaternary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
                 }}
                 onClick={() => onRowClick?.(row.original)}
                 data-testid={`table-row-${row.id}`}
@@ -100,7 +97,7 @@ export const PremiumTable = ({
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className=\"px-6 py-4 text-sm\"
+                    className="px-6 py-4 text-sm"
                     style={{ color: premiumTheme.text.primary }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -112,10 +109,9 @@ export const PremiumTable = ({
         </table>
       </div>
 
-      {/* Empty state */}
       {table.getRowModel().rows.length === 0 && (
         <div 
-          className=\"text-center py-12\"
+          className="text-center py-12"
           style={{ color: premiumTheme.text.tertiary }}
         >
           <p>Nenhum registro encontrado</p>

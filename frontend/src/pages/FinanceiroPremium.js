@@ -13,12 +13,10 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
-  BarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
   AreaChart,
   Area,
+  LineChart, 
+  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -38,8 +36,6 @@ export const FinanceiroPremium = () => {
   const [analytics, setAnalytics] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [trustAccounts, setTrustAccounts] = useState([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('6m');
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   useEffect(() => {
     if (user?.role === 'admin') {
@@ -106,9 +102,9 @@ export const FinanceiroPremium = () => {
       accessorKey: 'invoice_number',
       header: 'Fatura',
       cell: ({ row }) => (
-        <div className=\"flex items-center space-x-3\">
+        <div className="flex items-center space-x-3">
           <FileText size={18} style={{ color: premiumTheme.electric.blue }} />
-          <span className=\"font-medium\">{row.original.invoice_number}</span>
+          <span className="font-medium">{row.original.invoice_number}</span>
         </div>
       ),
     },
@@ -117,7 +113,7 @@ export const FinanceiroPremium = () => {
       header: 'Cliente',
       cell: ({ row }) => (
         <div>
-          <div className=\"font-medium\" style={{ color: premiumTheme.text.primary }}>
+          <div className="font-medium" style={{ color: premiumTheme.text.primary }}>
             {row.original.client_name}
           </div>
         </div>
@@ -145,7 +141,7 @@ export const FinanceiroPremium = () => {
       accessorKey: 'total',
       header: 'Valor',
       cell: ({ row }) => (
-        <div className=\"text-right font-light text-lg\">
+        <div className="text-right font-light text-lg">
           R$ {row.original.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </div>
       ),
@@ -153,22 +149,22 @@ export const FinanceiroPremium = () => {
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => <StatusBadge status={row.original.status} variant=\"glassmorphic\" />,
+      cell: ({ row }) => <StatusBadge status={row.original.status} variant="glassmorphic" />,
     },
   ];
 
   return (
     <Layout>
-      <div className=\"max-w-[1600px] mx-auto space-y-8\" data-testid=\"financeiro-premium-page\">
+      <div className="max-w-[1600px] mx-auto space-y-8" data-testid="financeiro-premium-page">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className=\"flex items-center justify-between mb-2\">
+          <div className="flex items-center justify-between mb-2">
             <h1 
-              className=\"text-4xl font-light tracking-tight\"
+              className="text-4xl font-light tracking-tight"
               style={{ 
                 color: premiumTheme.text.primary,
                 fontFamily: premiumTheme.typography.fontFamily.display 
@@ -177,13 +173,12 @@ export const FinanceiroPremium = () => {
               Dashboard Financeiro
             </h1>
             <button
-              onClick={() => setShowInvoiceModal(true)}
-              className=\"flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all\"
+              className="flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all"
               style={{
                 background: premiumTheme.gradients.gold,
                 color: premiumTheme.background.primary,
               }}
-              data-testid=\"create-invoice-btn\"
+              data-testid="create-invoice-btn"
             >
               <Plus size={20} />
               <span>Nova Fatura</span>
@@ -201,14 +196,14 @@ export const FinanceiroPremium = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <GlassCard className=\"border-l-4\" style={{ borderLeftColor: premiumTheme.semantic.warning }}>
-              <div className=\"flex items-start space-x-4\">
+            <GlassCard className="border-l-4" style={{ borderLeftColor: premiumTheme.semantic.warning }}>
+              <div className="flex items-start space-x-4">
                 <AlertCircle size={24} style={{ color: premiumTheme.semantic.warning }} />
-                <div className=\"flex-1\">
-                  <h3 className=\"font-semibold mb-2\" style={{ color: premiumTheme.text.primary }}>
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-2" style={{ color: premiumTheme.text.primary }}>
                     Alertas Financeiros
                   </h3>
-                  <div className=\"space-y-1\" style={{ color: premiumTheme.text.secondary }}>
+                  <div className="space-y-1" style={{ color: premiumTheme.text.secondary }}>
                     {alerts.overdue_invoices > 0 && (
                       <p>• {alerts.overdue_invoices} fatura(s) vencida(s) pendente(s) de pagamento</p>
                     )}
@@ -227,53 +222,53 @@ export const FinanceiroPremium = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6\"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         >
           <KPICard
-            title=\"Receitas Totais\"
+            title="Receitas Totais"
             value={kpis.total_revenue}
-            format=\"currency\"
+            format="currency"
             change={15.5}
             icon={TrendingUp}
             gradient={premiumTheme.gradients.revenue}
-            trend=\"up\"
+            trend="up"
           />
 
           <KPICard
-            title=\"Despesas Totais\"
+            title="Despesas Totais"
             value={kpis.total_expenses}
-            format=\"currency\"
+            format="currency"
             change={-8.2}
             icon={TrendingDown}
             gradient={premiumTheme.gradients.expense}
-            trend=\"down\"
+            trend="down"
           />
 
           <KPICard
-            title=\"Lucro Líquido\"
+            title="Lucro Líquido"
             value={kpis.net_profit}
-            format=\"currency\"
+            format="currency"
             change={kpis.profit_margin}
             changeLabel={`Margem: ${kpis.profit_margin.toFixed(1)}%`}
             icon={DollarSign}
             gradient={premiumTheme.gradients.gold}
-            trend=\"up\"
+            trend="up"
           />
 
           <KPICard
-            title=\"A Receber\"
+            title="A Receber"
             value={kpis.receivables}
-            format=\"currency\"
+            format="currency"
             change={5.3}
             changeLabel={`${kpis.overdue_count} vencida(s)`}
             icon={Clock}
             gradient={premiumTheme.gradients.electric}
-            trend=\"down\"
+            trend="down"
           />
         </motion.div>
 
         {/* Charts Section */}
-        <div className=\"grid grid-cols-1 lg:grid-cols-2 gap-6\">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cash Flow Chart */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -282,25 +277,25 @@ export const FinanceiroPremium = () => {
           >
             <GlassCard>
               <h2 
-                className=\"text-xl font-semibold mb-6\"
+                className="text-xl font-semibold mb-6"
                 style={{ color: premiumTheme.text.primary }}
               >
                 Fluxo de Caixa Mensal
               </h2>
-              <ResponsiveContainer width=\"100%\" height={300}>
+              <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={monthly_trend}>
                   <defs>
-                    <linearGradient id=\"revenueGradient\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">
-                      <stop offset=\"5%\" stopColor={premiumTheme.semantic.success} stopOpacity={0.8}/>
-                      <stop offset=\"95%\" stopColor={premiumTheme.semantic.success} stopOpacity={0}/>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={premiumTheme.semantic.success} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={premiumTheme.semantic.success} stopOpacity={0}/>
                     </linearGradient>
-                    <linearGradient id=\"expenseGradient\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">
-                      <stop offset=\"5%\" stopColor={premiumTheme.semantic.danger} stopOpacity={0.8}/>
-                      <stop offset=\"95%\" stopColor={premiumTheme.semantic.danger} stopOpacity={0}/>
+                    <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={premiumTheme.semantic.danger} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={premiumTheme.semantic.danger} stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray=\"3 3\" stroke={premiumTheme.border.secondary} />
-                  <XAxis dataKey=\"month\" stroke={premiumTheme.text.tertiary} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={premiumTheme.border.secondary} />
+                  <XAxis dataKey="month" stroke={premiumTheme.text.tertiary} />
                   <YAxis stroke={premiumTheme.text.tertiary} />
                   <Tooltip
                     contentStyle={{
@@ -312,20 +307,20 @@ export const FinanceiroPremium = () => {
                   />
                   <Legend />
                   <Area
-                    type=\"monotone\"
-                    dataKey=\"revenue\"
+                    type="monotone"
+                    dataKey="revenue"
                     stroke={premiumTheme.semantic.success}
                     fillOpacity={1}
-                    fill=\"url(#revenueGradient)\"
-                    name=\"Receitas\"
+                    fill="url(#revenueGradient)"
+                    name="Receitas"
                   />
                   <Area
-                    type=\"monotone\"
-                    dataKey=\"expenses\"
+                    type="monotone"
+                    dataKey="expenses"
                     stroke={premiumTheme.semantic.danger}
                     fillOpacity={1}
-                    fill=\"url(#expenseGradient)\"
-                    name=\"Despesas\"
+                    fill="url(#expenseGradient)"
+                    name="Despesas"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -340,15 +335,15 @@ export const FinanceiroPremium = () => {
           >
             <GlassCard>
               <h2 
-                className=\"text-xl font-semibold mb-6\"
+                className="text-xl font-semibold mb-6"
                 style={{ color: premiumTheme.text.primary }}
               >
                 Evolução do Lucro
               </h2>
-              <ResponsiveContainer width=\"100%\" height={300}>
+              <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={monthly_trend}>
-                  <CartesianGrid strokeDasharray=\"3 3\" stroke={premiumTheme.border.secondary} />
-                  <XAxis dataKey=\"month\" stroke={premiumTheme.text.tertiary} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={premiumTheme.border.secondary} />
+                  <XAxis dataKey="month" stroke={premiumTheme.text.tertiary} />
                   <YAxis stroke={premiumTheme.text.tertiary} />
                   <Tooltip
                     contentStyle={{
@@ -360,13 +355,13 @@ export const FinanceiroPremium = () => {
                   />
                   <Legend />
                   <Line
-                    type=\"monotone\"
-                    dataKey=\"profit\"
+                    type="monotone"
+                    dataKey="profit"
                     stroke={premiumTheme.gold.matte}
                     strokeWidth={3}
                     dot={{ fill: premiumTheme.gold.matte, r: 5 }}
                     activeDot={{ r: 7 }}
-                    name=\"Lucro\"
+                    name="Lucro"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -382,41 +377,41 @@ export const FinanceiroPremium = () => {
             transition={{ delay: 0.6 }}
           >
             <GlassCard>
-              <div className=\"flex items-center justify-between mb-6\">
+              <div className="flex items-center justify-between mb-6">
                 <h2 
-                  className=\"text-xl font-semibold\"
+                  className="text-xl font-semibold"
                   style={{ color: premiumTheme.text.primary }}
                 >
                   Contas Caução
                 </h2>
                 <div 
-                  className=\"text-2xl font-light\"
+                  className="text-2xl font-light"
                   style={{ color: premiumTheme.gold.matte }}
                 >
                   R$ {kpis.trust_accounts_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
-              <div className=\"grid grid-cols-1 md:grid-cols-3 gap-4\">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {trustAccounts.slice(0, 3).map((account) => (
                   <div
                     key={account.id}
-                    className=\"p-4 rounded-lg border\"
+                    className="p-4 rounded-lg border"
                     style={{
                       backgroundColor: `${premiumTheme.background.secondary}80`,
                       borderColor: premiumTheme.border.primary,
                     }}
                   >
-                    <div className=\"text-sm mb-1\" style={{ color: premiumTheme.text.secondary }}>
+                    <div className="text-sm mb-1" style={{ color: premiumTheme.text.secondary }}>
                       {account.client_name}
                     </div>
-                    <div className=\"text-lg font-medium mb-2\" style={{ color: premiumTheme.text.primary }}>
+                    <div className="text-lg font-medium mb-2" style={{ color: premiumTheme.text.primary }}>
                       {account.account_number}
                     </div>
-                    <div className=\"flex justify-between items-center\">
-                      <span className=\"text-xs\" style={{ color: premiumTheme.text.tertiary }}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs" style={{ color: premiumTheme.text.tertiary }}>
                         {account.bank_name}
                       </span>
-                      <StatusBadge status={account.reconciliation.status} size=\"sm\" />
+                      <StatusBadge status={account.reconciliation.status} size="sm" />
                     </div>
                   </div>
                 ))}
@@ -431,9 +426,9 @@ export const FinanceiroPremium = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
         >
-          <div className=\"mb-4\">
+          <div className="mb-4">
             <h2 
-              className=\"text-xl font-semibold\"
+              className="text-xl font-semibold"
               style={{ color: premiumTheme.text.primary }}
             >
               Faturas Recentes
