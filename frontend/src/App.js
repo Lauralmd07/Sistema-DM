@@ -58,7 +58,7 @@ function App() {
           <Route
             path="/financeiro"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute>
                 <FinanceiroPremium />
               </ProtectedRoute>
             }

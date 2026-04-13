@@ -1,14 +1,171 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Plus, X, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, momentLocalizer } from 'react-big-calendar';
+import moment from 'moment';
+import 'moment/locale/pt-br';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { Plus, X } from 'lucide-react';
+
+// Configure moment locale
+moment.locale('pt-br');
+const localizer = momentLocalizer(moment);
+
+// Custom styles for the calendar
+const customStyles = `
+  .rbc-calendar {
+    background-color: #1E1E1E;
+    color: #F5F5F5;
+    font-family: Inter, sans-serif;
+  }
+  
+  .rbc-header {
+    background-color: #0A0E17;
+    color: #D4AF37;
+    border-color: #3A3A3A;
+    padding: 12px 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  
+  .rbc-today {
+    background-color: rgba(74, 158, 255, 0.08);
+  }
+  
+  .rbc-off-range {
+    color: #475569;
+  }
+  
+  .rbc-off-range-bg {
+    background-color: #0A0E17;
+  }
+  
+  .rbc-date-cell {
+    color: #F5F5F5;
+    padding: 8px;
+  }
+  
+  .rbc-day-bg {
+    background-color: #121212;
+    border-color: #3A3A3A;
+  }
+  
+  .rbc-month-view {
+    background-color: #121212;
+    border: 1px solid #3A3A3A;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
+  .rbc-time-view {
+    background-color: #121212;
+    border: 1px solid #3A3A3A;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
+  .rbc-time-header {
+    background-color: #1E1E1E;
+    border-color: #3A3A3A;
+  }
+  
+  .rbc-time-content {
+    border-color: #3A3A3A;
+  }
+  
+  .rbc-timeslot-group {
+    border-color: #3A3A3A;
+  }
+  
+  .rbc-time-slot {
+    color: #94A3B8;
+    border-color: #2A2A2A;
+  }
+  
+  .rbc-current-time-indicator {
+    background-color: #D4AF37;
+    height: 2px;
+  }
+  
+  .rbc-event {
+    background-color: #D4AF37;
+    color: #121212;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  
+  .rbc-event.lead-event {
+    background: linear-gradient(135deg, #4A9EFF 0%, #3B82F6 100%);
+    color: white;
+  }
+  
+  .rbc-event.return-event {
+    background: linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%);
+    color: white;
+  }
+  
+  .rbc-event:hover {
+    opacity: 0.9;
+  }
+  
+  .rbc-event-label {
+    font-size: 11px;
+  }
+  
+  .rbc-event-content {
+    font-size: 13px;
+  }
+  
+  .rbc-toolbar {
+    padding: 16px;
+    background-color: #1E1E1E;
+    border: 1px solid #3A3A3A;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .rbc-toolbar button {
+    color: #F5F5F5;
+    background-color: #2A2A2A;
+    border: 1px solid #3A3A3A;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  
+  .rbc-toolbar button:hover {
+    background-color: #3A3A3A;
+    border-color: #D4AF37;
+  }
+  
+  .rbc-toolbar button:active,
+  .rbc-toolbar button.rbc-active {
+    background-color: #D4AF37;
+    color: #121212;
+    border-color: #D4AF37;
+  }
+  
+  .rbc-toolbar-label {
+    color: #F5F5F5;
+    font-size: 18px;
+    font-weight: 600;
+  }
+`;
 
 export const Agenda = () => {
   const { api } = useAuth();
   const [appointments, setAppointments] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [view, setView] = useState('month'); // month or week
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [view, setView] = useState('week');
   const [formData, setFormData] = useState({
     type: 'lead',
     client_name: '',
@@ -26,6 +183,25 @@ export const Agenda = () => {
     loadAppointments();
   }, []);
 
+  useEffect(() => {
+    // Convert appointments to calendar events
+    const calendarEvents = appointments.map(apt => {
+      const startDateTime = moment(`${apt.date} ${apt.time}`, 'YYYY-MM-DD HH:mm').toDate();
+      const endDateTime = moment(startDateTime).add(1, 'hour').toDate(); // Default 1 hour duration
+      
+      return {
+        id: apt.id,
+        title: `${apt.client_name} - ${apt.subject}`,
+        start: startDateTime,
+        end: endDateTime,
+        resource: apt,
+        className: apt.type === 'lead' ? 'lead-event' : 'return-event',
+      };
+    });
+    
+    setEvents(calendarEvents);
+  }, [appointments]);
+
   const loadAppointments = async () => {
     try {
       const { data } = await api.get('/appointments');
@@ -37,6 +213,22 @@ export const Agenda = () => {
     }
   };
 
+  const handleSelectSlot = useCallback(({ start, end }) => {
+    const startMoment = moment(start);
+    setSelectedSlot({ start, end });
+    setFormData({
+      ...formData,
+      date: startMoment.format('YYYY-MM-DD'),
+      time: startMoment.format('HH:mm'),
+    });
+    setShowForm(true);
+  }, [formData]);
+
+  const handleSelectEvent = useCallback((event) => {
+    console.log('Event selected:', event);
+    // Aqui você pode abrir um modal de detalhes/edição
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -47,18 +239,6 @@ export const Agenda = () => {
     } catch (error) {
       console.error('Error creating appointment:', error);
       alert('Erro ao criar agendamento');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Deseja realmente excluir este agendamento?')) return;
-    
-    try {
-      await api.delete(`/appointments/${id}`);
-      await loadAppointments();
-    } catch (error) {
-      console.error('Error deleting appointment:', error);
-      alert('Erro ao excluir agendamento');
     }
   };
 
@@ -75,6 +255,7 @@ export const Agenda = () => {
       rg: '',
       address: '',
     });
+    setSelectedSlot(null);
   };
 
   const handleChange = (e) => {
@@ -82,14 +263,51 @@ export const Agenda = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  // Custom event style getter
+  const eventStyleGetter = (event) => {
+    const backgroundColor = event.resource.type === 'lead' 
+      ? '#4A9EFF' 
+      : '#2DD4BF';
+    
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: '6px',
+        opacity: 0.9,
+        color: 'white',
+        border: 'none',
+        display: 'block',
+      }
+    };
+  };
+
+  // Messages in Portuguese
+  const messages = {
+    allDay: 'Dia inteiro',
+    previous: 'Anterior',
+    next: 'Próximo',
+    today: 'Hoje',
+    month: 'Mês',
+    week: 'Semana',
+    day: 'Dia',
+    agenda: 'Agenda',
+    date: 'Data',
+    time: 'Hora',
+    event: 'Evento',
+    noEventsInRange: 'Não há eventos neste período',
+    showMore: (total) => `+${total} mais`,
+  };
+
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto" data-testid="agenda-page">
+      <style>{customStyles}</style>
+      
+      <div className="max-w-[1800px] mx-auto" data-testid="agenda-page">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-[#F5F5F5] mb-2">Agenda de Consultas</h1>
-            <p className="text-[#F5F5F5]/60">Gerencie seus agendamentos de primeira consulta e retorno</p>
+            <p className="text-[#F5F5F5]/60">Gerencie seus agendamentos - clique em um horário para criar</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
@@ -101,81 +319,47 @@ export const Agenda = () => {
           </button>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex space-x-2 mb-6">
-          <button
-            onClick={() => setView('month')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              view === 'month'
-                ? 'bg-[#D4AF37] text-[#121212]'
-                : 'bg-[#1E1E1E] text-[#F5F5F5] hover:bg-[#2A2A2A]'
-            }`}
-          >
-            Mês
-          </button>
-          <button
-            onClick={() => setView('week')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              view === 'week'
-                ? 'bg-[#D4AF37] text-[#121212]'
-                : 'bg-[#1E1E1E] text-[#F5F5F5] hover:bg-[#2A2A2A]'
-            }`}
-          >
-            Semana
-          </button>
+        {/* Legend */}
+        <div className="flex items-center space-x-6 mb-4 p-4 bg-[#1E1E1E] border border-[#3A3A3A] rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #4A9EFF 0%, #3B82F6 100%)' }}></div>
+            <span className="text-sm text-[#F5F5F5]">Primeira Consulta (Lead)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%)' }}></div>
+            <span className="text-sm text-[#F5F5F5]">Retorno</span>
+          </div>
         </div>
 
-        {/* Appointments List */}
-        <div className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-6">
-          {loading ? (
-            <p className="text-center text-[#F5F5F5]/60 py-8">Carregando...</p>
-          ) : appointments.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar size={48} className="mx-auto text-[#D4AF37] mb-4" />
-              <p className="text-[#F5F5F5]/60">Nenhuma consulta agendada</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {appointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="flex items-center justify-between p-4 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg hover:border-[#D4AF37] transition-all"
-                  data-testid={`appointment-card-${appointment.id}`}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div
-                      className="w-3 h-12 rounded-full"
-                      style={{ backgroundColor: appointment.color }}
-                    />
-                    <div>
-                      <div className="flex items-center space-x-3 mb-1">
-                        <h3 className="text-[#F5F5F5] font-bold">{appointment.client_name}</h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          appointment.type === 'lead'
-                            ? 'bg-blue-900/30 text-blue-400'
-                            : 'bg-green-900/30 text-green-400'
-                        }`}>
-                          {appointment.type === 'lead' ? 'Primeira Consulta' : 'Retorno'}
-                        </span>
-                      </div>
-                      <p className="text-[#F5F5F5]/60 text-sm">{appointment.subject}</p>
-                      <p className="text-[#D4AF37] text-sm mt-1">
-                        {appointment.phone} • {new Date(appointment.date).toLocaleDateString('pt-BR')} às {appointment.time}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(appointment.id)}
-                    className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
-                    data-testid={`delete-appointment-${appointment.id}`}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Calendar */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#D4AF37]"></div>
+          </div>
+        ) : (
+          <div style={{ height: 'calc(100vh - 300px)', minHeight: '600px' }}>
+            <Calendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '100%' }}
+              view={view}
+              onView={setView}
+              views={['month', 'week', 'day', 'agenda']}
+              messages={messages}
+              selectable
+              onSelectSlot={handleSelectSlot}
+              onSelectEvent={handleSelectEvent}
+              eventPropGetter={eventStyleGetter}
+              popup
+              step={30}
+              timeslots={2}
+              defaultDate={new Date()}
+              scrollToTime={moment().set({ hour: 8, minute: 0 }).toDate()}
+            />
+          </div>
+        )}
 
         {/* Form Modal */}
         {showForm && (
@@ -273,7 +457,7 @@ export const Agenda = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
                       Data *
@@ -302,18 +486,6 @@ export const Agenda = () => {
                       className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                      Cor
-                    </label>
-                    <input
-                      type="color"
-                      name="color"
-                      value={formData.color}
-                      onChange={handleChange}
-                      className="w-full h-[50px] px-2 py-1 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg cursor-pointer"
-                    />
-                  </div>
                 </div>
 
                 {/* Return Fields */}
@@ -322,9 +494,7 @@ export const Agenda = () => {
                     <h3 className="text-lg font-bold text-[#D4AF37] mb-4">Informações Adicionais (Retorno)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                          CPF
-                        </label>
+                        <label className="block text-sm font-medium text-[#F5F5F5] mb-2">CPF</label>
                         <input
                           type="text"
                           name="cpf"
@@ -335,9 +505,7 @@ export const Agenda = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                          RG
-                        </label>
+                        <label className="block text-sm font-medium text-[#F5F5F5] mb-2">RG</label>
                         <input
                           type="text"
                           name="rg"

@@ -19,11 +19,8 @@ export const Layout = ({ children }) => {
     { path: '/agenda', icon: Calendar, label: 'Agenda' },
     { path: '/processos', icon: FolderKanban, label: 'Processos' },
     { path: '/drive', icon: FolderTree, label: 'Drive Jurídico' },
+    { path: '/financeiro', icon: DollarSign, label: 'Financeiro' },
   ];
-
-  if (user?.role === 'admin') {
-    menuItems.push({ path: '/financeiro', icon: DollarSign, label: 'Financeiro' });
-  }
 
   return (
     <div className="min-h-screen bg-[#121212] text-[#F5F5F5]">
