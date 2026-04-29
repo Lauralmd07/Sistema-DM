@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, X, GripVertical, Clock, FileText } from 'lucide-react';
@@ -216,20 +216,20 @@ export const Processos = () => {
     })
   );
 
-  useEffect(() => {
-    loadProcesses();
-  }, []);
-
-  const loadProcesses = async () => {
+  const loadProcesses = useCallback(async () => {
     try {
       const { data } = await api.get('/processes');
       setProcesses(data);
     } catch (error) {
-      console.error('Error loading processes:', error);
+      // Error handled silently
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    loadProcesses();
+  }, [loadProcesses]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -239,7 +239,6 @@ export const Processos = () => {
       setShowForm(false);
       resetForm();
     } catch (error) {
-      console.error('Error creating process:', error);
       alert('Erro ao criar processo');
     }
   };
@@ -278,7 +277,7 @@ export const Processos = () => {
           await api.put(`/processes/${activeProcess.id}`, { status: over.id });
           await loadProcesses();
         } catch (error) {
-          console.error('Error updating process status:', error);
+          // Error updating status - retry may be needed
         }
       }
     }
@@ -289,7 +288,7 @@ export const Processos = () => {
       await api.put(`/processes/${id}`, updates);
       await loadProcesses();
     } catch (error) {
-      console.error('Error updating process:', error);
+      // Error updating process
     }
   };
 

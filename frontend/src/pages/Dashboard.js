@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Layout } from '../components/Layout';
 import { Calendar, FolderKanban, FolderTree, DollarSign, TrendingUp, Users } from 'lucide-react';
@@ -14,11 +14,7 @@ export const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const [appointmentsRes, processesRes, documentsRes] = await Promise.all([
         api.get('/appointments'),
@@ -46,11 +42,15 @@ export const Dashboard = () => {
         ].slice(0, 5),
       });
     } catch (error) {
-      console.error('Error loading stats:', error);
+      // Error handled silently for better UX
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   const statCards = [
     {
@@ -91,11 +91,11 @@ export const Dashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {statCards.map((stat, idx) => {
+          {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
               <Link
-                key={idx}
+                key={stat.path}
                 to={stat.link}
                 className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-6 hover:border-[#D4AF37] transition-all group"
                 data-testid={`stat-card-${stat.title.toLowerCase()}`}
@@ -127,9 +127,9 @@ export const Dashboard = () => {
             <p className="text-[#F5F5F5]/60 text-center py-8">Nenhuma atividade recente</p>
           ) : (
             <div className="space-y-4">
-              {stats.recentActivities.map((activity, idx) => (
+              {stats.recentActivities.map((activity) => (
                 <div
-                  key={idx}
+                  key={`${activity.type}-${activity.title}`}
                   className="flex items-start space-x-4 p-4 bg-[#2A2A2A] rounded-lg hover:bg-[#3A3A3A] transition-colors"
                 >
                   <div className="flex-1">

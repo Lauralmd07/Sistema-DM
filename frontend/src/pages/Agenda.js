@@ -207,7 +207,7 @@ export const Agenda = () => {
       const { data } = await api.get('/appointments');
       setAppointments(data);
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      // Error loading appointments
     } finally {
       setLoading(false);
     }
@@ -216,17 +216,16 @@ export const Agenda = () => {
   const handleSelectSlot = useCallback(({ start, end }) => {
     const startMoment = moment(start);
     setSelectedSlot({ start, end });
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       date: startMoment.format('YYYY-MM-DD'),
       time: startMoment.format('HH:mm'),
-    });
+    }));
     setShowForm(true);
-  }, [formData]);
+  }, []);
 
   const handleSelectEvent = useCallback((event) => {
-    console.log('Event selected:', event);
-    // Aqui você pode abrir um modal de detalhes/edição
+    // Event details can be shown in a modal
   }, []);
 
   const handleSubmit = async (e) => {
@@ -237,7 +236,6 @@ export const Agenda = () => {
       setShowForm(false);
       resetForm();
     } catch (error) {
-      console.error('Error creating appointment:', error);
       alert('Erro ao criar agendamento');
     }
   };

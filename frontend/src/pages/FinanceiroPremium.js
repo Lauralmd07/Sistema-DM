@@ -69,7 +69,7 @@ export const FinanceiroPremium = () => {
       setTrustAccounts(trustAccountsRes.data);
       setFinancialRecords(financialRes.data);
     } catch (error) {
-      console.error('Error loading financial data:', error);
+      // Error loading financial data
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,6 @@ export const FinanceiroPremium = () => {
         date: new Date().toISOString().split('T')[0],
       });
     } catch (error) {
-      console.error('Error adding record:', error);
       alert('Erro ao adicionar registro');
     }
   };
@@ -107,7 +106,6 @@ export const FinanceiroPremium = () => {
       await api.delete(`/financial/${id}`);
       await loadFinancialData();
     } catch (error) {
-      console.error('Error deleting record:', error);
       alert('Erro ao excluir registro');
     }
   };

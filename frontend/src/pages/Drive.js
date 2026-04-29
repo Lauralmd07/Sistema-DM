@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { FolderPlus, Upload, File, FileText, Image as ImageIcon, Trash2, Eye, X, Folder } from 'lucide-react';
+import { 
+  FolderPlus, 
+  Upload, 
+  File, 
+  FileText, 
+  Image as ImageIcon, 
+  Trash2, 
+  Eye, 
+  X, 
+  Folder,
+  ChevronDown,
+  ChevronRight
+} from 'lucide-react';
 
 export const Drive = () => {
   const { api } = useAuth();
@@ -12,6 +24,7 @@ export const Drive = () => {
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [viewingDocument, setViewingDocument] = useState(null);
+  const [expandedFolders, setExpandedFolders] = useState({});
   const [folderFormData, setFolderFormData] = useState({
     name: '',
     type: 'client',
@@ -19,11 +32,7 @@ export const Drive = () => {
   });
   const [uploadFile, setUploadFile] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [foldersRes, documentsRes] = await Promise.all([
         api.get('/folders'),
@@ -32,11 +41,15 @@ export const Drive = () => {
       setFolders(foldersRes.data);
       setDocuments(documentsRes.data);
     } catch (error) {
-      console.error('Error loading data:', error);
+      // Error loading data
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleCreateFolder = async (e) => {
     e.preventDefault();
@@ -46,7 +59,6 @@ export const Drive = () => {
       setShowFolderForm(false);
       setFolderFormData({ name: '', type: 'client', reference_id: '' });
     } catch (error) {
-      console.error('Error creating folder:', error);
       alert('Erro ao criar pasta');
     }
   };
@@ -69,7 +81,6 @@ export const Drive = () => {
       setUploadFile(null);
       setSelectedFolder(null);
     } catch (error) {
-      console.error('Error uploading document:', error);
       alert('Erro ao fazer upload do documento');
     }
   };
@@ -81,7 +92,6 @@ export const Drive = () => {
       await api.delete(`/folders/${folderId}`);
       await loadData();
     } catch (error) {
-      console.error('Error deleting folder:', error);
       alert('Erro ao excluir pasta');
     }
   };
@@ -93,9 +103,15 @@ export const Drive = () => {
       await api.delete(`/documents/${documentId}`);
       await loadData();
     } catch (error) {
-      console.error('Error deleting document:', error);
       alert('Erro ao excluir documento');
     }
+  };
+
+  const toggleFolder = (folderId) => {
+    setExpandedFolders(prev => ({
+      ...prev,
+      [folderId]: !prev[folderId]
+    }));
   };
 
   const getFileIcon = (fileType) => {
@@ -143,7 +159,7 @@ export const Drive = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-[#F5F5F5] mb-2">Drive Jurídico</h1>
-            <p className="text-[#F5F5F5]/60">Gerencie documentos por cliente ou processo</p>
+            <p className="text-[#F5F5F5]/60">Gerencie documentos organizados por pasta</p>
           </div>
           <div className="flex space-x-3">
             <button
@@ -167,92 +183,115 @@ export const Drive = () => {
 
         {loading ? (
           <p className="text-center text-[#F5F5F5]/60 py-8">Carregando...</p>
+        ) : folders.length === 0 ? (
+          <div className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-12 text-center">
+            <Folder size={48} className="mx-auto text-[#D4AF37] mb-4" />
+            <p className="text-[#F5F5F5]/60 mb-4">Nenhuma pasta criada</p>
+            <p className="text-sm text-[#F5F5F5]/40">Crie uma pasta para começar a organizar seus documentos</p>
+          </div>
         ) : (
-          <div className="space-y-8">
-            {/* Folders */}
-            <div>
-              <h2 className="text-xl font-bold text-[#F5F5F5] mb-4">Pastas</h2>
-              {folders.length === 0 ? (
-                <div className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-12 text-center">
-                  <Folder size={48} className="mx-auto text-[#D4AF37] mb-4" />
-                  <p className="text-[#F5F5F5]/60">Nenhuma pasta criada</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {folders.map((folder) => {
-                    const folderDocs = documents.filter(d => d.folder_id === folder.id);
-                    return (
-                      <div
-                        key={folder.id}
-                        className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-6 hover:border-[#D4AF37] transition-all group"
-                        data-testid={`folder-${folder.id}`}
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <Folder size={32} className="text-[#D4AF37]" />
-                          <button
-                            onClick={() => handleDeleteFolder(folder.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:bg-red-900/20 rounded transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                        <h3 className="text-[#F5F5F5] font-bold mb-1">{folder.name}</h3>
-                        <p className="text-xs text-[#F5F5F5]/60 mb-2 capitalize">{folder.type}</p>
-                        <p className="text-xs text-[#D4AF37]">{folderDocs.length} documentos</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Documents */}
-            <div>
-              <h2 className="text-xl font-bold text-[#F5F5F5] mb-4">Documentos</h2>
-              {documents.length === 0 ? (
-                <div className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-12 text-center">
-                  <FileText size={48} className="mx-auto text-[#D4AF37] mb-4" />
-                  <p className="text-[#F5F5F5]/60">Nenhum documento enviado</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl p-4 hover:border-[#D4AF37] transition-all"
-                      data-testid={`document-${doc.id}`}
-                    >
-                      <div className="flex items-start space-x-3">
-                        {getFileIcon(doc.file_type)}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-[#F5F5F5] font-medium text-sm truncate mb-1">
-                            {doc.filename}
-                          </h3>
-                          <p className="text-xs text-[#F5F5F5]/60">
-                            {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2 mt-4">
-                        <button
-                          onClick={() => setViewingDocument(doc)}
-                          className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] rounded text-sm font-medium transition-colors"
-                        >
-                          <Eye size={14} />
-                          <span>Ver</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDocument(doc.id)}
-                          className="px-3 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+          <div className="space-y-4">
+            {/* Folders with Documents Inside */}
+            {folders.map((folder) => {
+              const folderDocs = documents.filter(d => d.folder_id === folder.id);
+              const isExpanded = expandedFolders[folder.id];
+              
+              return (
+                <div
+                  key={folder.id}
+                  className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl overflow-hidden hover:border-[#D4AF37] transition-all"
+                  data-testid={`folder-${folder.id}`}
+                >
+                  {/* Folder Header */}
+                  <div 
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-[#2A2A2A] transition-colors"
+                    onClick={() => toggleFolder(folder.id)}
+                  >
+                    <div className="flex items-center space-x-4 flex-1">
+                      <button className="text-[#D4AF37]">
+                        {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                      </button>
+                      <Folder size={28} className="text-[#D4AF37]" />
+                      <div>
+                        <h3 className="text-[#F5F5F5] font-bold text-lg">{folder.name}</h3>
+                        <p className="text-xs text-[#F5F5F5]/60 capitalize">
+                          {folder.type} • {folderDocs.length} documento(s)
+                        </p>
                       </div>
                     </div>
-                  ))}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFolder(folder.id);
+                      }}
+                      className="p-2 text-red-400 hover:bg-red-900/20 rounded transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+
+                  {/* Documents Inside Folder */}
+                  {isExpanded && (
+                    <div className="border-t border-[#3A3A3A] bg-[#121212] p-4">
+                      {folderDocs.length === 0 ? (
+                        <div className="text-center py-8">
+                          <FileText size={40} className="mx-auto text-[#F5F5F5]/20 mb-3" />
+                          <p className="text-[#F5F5F5]/40 text-sm">
+                            Nenhum documento nesta pasta
+                          </p>
+                          <button
+                            onClick={() => {
+                              setSelectedFolder(folder.id);
+                              setShowUploadForm(true);
+                            }}
+                            className="mt-3 text-sm text-[#D4AF37] hover:text-[#E5C158] transition-colors"
+                          >
+                            + Adicionar documento
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {folderDocs.map((doc) => (
+                            <div
+                              key={doc.id}
+                              className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-lg p-3 hover:border-[#D4AF37] transition-all"
+                              data-testid={`document-${doc.id}`}
+                            >
+                              <div className="flex items-start space-x-3 mb-3">
+                                {getFileIcon(doc.file_type)}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-[#F5F5F5] font-medium text-sm truncate">
+                                    {doc.filename}
+                                  </h4>
+                                  <p className="text-xs text-[#F5F5F5]/60">
+                                    {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => setViewingDocument(doc)}
+                                  className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] rounded text-sm font-medium transition-colors"
+                                >
+                                  <Eye size={14} />
+                                  <span>Ver</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  className="px-3 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })}
           </div>
         )}
 
