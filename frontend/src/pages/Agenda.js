@@ -5,7 +5,7 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Edit2, Trash2, User, Phone, FileText, Calendar as CalendarIcon, MapPin, IdCard } from 'lucide-react';
 
 // Configure moment locale
 moment.locale('pt-br');
@@ -165,6 +165,8 @@ export const Agenda = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [view, setView] = useState('week');
   const [formData, setFormData] = useState({
     type: 'lead',
@@ -225,18 +227,53 @@ export const Agenda = () => {
   }, []);
 
   const handleSelectEvent = useCallback((event) => {
-    // Event details can be shown in a modal
+    setSelectedEvent(event.resource);
   }, []);
+
+  const handleEditAppointment = () => {
+    if (!selectedEvent) return;
+    setFormData({
+      type: selectedEvent.type || 'lead',
+      client_name: selectedEvent.client_name || '',
+      phone: selectedEvent.phone || '',
+      subject: selectedEvent.subject || '',
+      date: selectedEvent.date || '',
+      time: selectedEvent.time || '',
+      color: selectedEvent.color || '#D4AF37',
+      cpf: selectedEvent.cpf || '',
+      rg: selectedEvent.rg || '',
+      address: selectedEvent.address || '',
+    });
+    setEditingId(selectedEvent.id);
+    setSelectedEvent(null);
+    setShowForm(true);
+  };
+
+  const handleDeleteAppointment = async () => {
+    if (!selectedEvent) return;
+    if (!window.confirm(`Deseja realmente excluir o compromisso de ${selectedEvent.client_name}?`)) return;
+    try {
+      await api.delete(`/appointments/${selectedEvent.id}`);
+      await loadAppointments();
+      setSelectedEvent(null);
+    } catch (error) {
+      alert('Erro ao excluir compromisso');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/appointments', formData);
+      if (editingId) {
+        await api.put(`/appointments/${editingId}`, formData);
+      } else {
+        await api.post('/appointments', formData);
+      }
       await loadAppointments();
       setShowForm(false);
       resetForm();
     } catch (error) {
-      alert('Erro ao criar agendamento');
+      alert('Erro ao salvar agendamento');
     }
   };
 
@@ -254,6 +291,7 @@ export const Agenda = () => {
       address: '',
     });
     setSelectedSlot(null);
+    setEditingId(null);
   };
 
   const handleChange = (e) => {
@@ -364,7 +402,9 @@ export const Agenda = () => {
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-[#1E1E1E] border-b border-[#3A3A3A] p-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-[#F5F5F5]">Nova Consulta</h2>
+                <h2 className="text-2xl font-bold text-[#F5F5F5]">
+                  {editingId ? 'Editar Consulta' : 'Nova Consulta'}
+                </h2>
                 <button
                   onClick={() => {
                     setShowForm(false);
@@ -535,9 +575,127 @@ export const Agenda = () => {
                   data-testid="appointment-submit-btn"
                   className="w-full py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] font-bold rounded-lg transition-all"
                 >
-                  Criar Agendamento
+                  {editingId ? 'Salvar Alterações' : 'Criar Agendamento'}
                 </button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Event Details Modal */}
+        {selectedEvent && (
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedEvent(null)}
+            data-testid="event-details-modal"
+          >
+            <div
+              className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-[#1E1E1E] border-b border-[#3A3A3A] p-6 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      background: selectedEvent.type === 'lead'
+                        ? 'linear-gradient(135deg, #4A9EFF 0%, #3B82F6 100%)'
+                        : 'linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%)'
+                    }}
+                  />
+                  <h2 className="text-xl font-bold text-[#F5F5F5]">
+                    {selectedEvent.type === 'lead' ? 'Primeira Consulta' : 'Retorno'}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setSelectedEvent(null)}
+                  className="p-2 hover:bg-[#2A2A2A] rounded-lg transition-colors"
+                  data-testid="event-details-close-btn"
+                >
+                  <X size={22} className="text-[#F5F5F5]" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="flex items-start space-x-3">
+                  <User size={18} className="text-[#D4AF37] mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Cliente</p>
+                    <p className="text-[#F5F5F5] font-medium" data-testid="event-client-name">
+                      {selectedEvent.client_name}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <Phone size={18} className="text-[#D4AF37] mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Telefone</p>
+                    <p className="text-[#F5F5F5]">{selectedEvent.phone || '—'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <FileText size={18} className="text-[#D4AF37] mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Assunto</p>
+                    <p className="text-[#F5F5F5]">{selectedEvent.subject || '—'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <CalendarIcon size={18} className="text-[#D4AF37] mt-0.5" />
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Data e Hora</p>
+                    <p className="text-[#F5F5F5]">
+                      {moment(`${selectedEvent.date} ${selectedEvent.time}`, 'YYYY-MM-DD HH:mm').format('DD/MM/YYYY [às] HH:mm')}
+                    </p>
+                  </div>
+                </div>
+
+                {(selectedEvent.cpf || selectedEvent.rg) && (
+                  <div className="flex items-start space-x-3">
+                    <IdCard size={18} className="text-[#D4AF37] mt-0.5" />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Documentos</p>
+                      <p className="text-[#F5F5F5]">
+                        {selectedEvent.cpf && <span>CPF: {selectedEvent.cpf}</span>}
+                        {selectedEvent.cpf && selectedEvent.rg && <span> · </span>}
+                        {selectedEvent.rg && <span>RG: {selectedEvent.rg}</span>}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.address && (
+                  <div className="flex items-start space-x-3">
+                    <MapPin size={18} className="text-[#D4AF37] mt-0.5" />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Endereço</p>
+                      <p className="text-[#F5F5F5] whitespace-pre-line">{selectedEvent.address}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="sticky bottom-0 bg-[#1E1E1E] border-t border-[#3A3A3A] p-4 flex space-x-3">
+                <button
+                  onClick={handleEditAppointment}
+                  data-testid="event-edit-btn"
+                  className="flex-1 flex items-center justify-center space-x-2 py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] font-bold rounded-lg transition-all"
+                >
+                  <Edit2 size={18} />
+                  <span>Editar</span>
+                </button>
+                <button
+                  onClick={handleDeleteAppointment}
+                  data-testid="event-delete-btn"
+                  className="flex items-center justify-center space-x-2 px-6 py-3 bg-red-900/30 hover:bg-red-900/50 text-red-400 font-bold rounded-lg transition-all border border-red-900/50"
+                >
+                  <Trash2 size={18} />
+                  <span>Excluir</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

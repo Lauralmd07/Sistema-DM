@@ -224,7 +224,6 @@ export const FinanceiroPremium = () => {
             title="Receitas Totais"
             value={kpis.total_revenue}
             format="currency"
-            change={15.5}
             icon={TrendingUp}
             gradient={premiumTheme.gradients.revenue}
             trend="up"
@@ -234,7 +233,6 @@ export const FinanceiroPremium = () => {
             title="Despesas Totais"
             value={kpis.total_expenses}
             format="currency"
-            change={-8.2}
             icon={TrendingDown}
             gradient={premiumTheme.gradients.expense}
             trend="down"
@@ -248,18 +246,17 @@ export const FinanceiroPremium = () => {
             changeLabel={`Margem: ${kpis.profit_margin.toFixed(1)}%`}
             icon={DollarSign}
             gradient={premiumTheme.gradients.gold}
-            trend="up"
+            trend={kpis.net_profit >= 0 ? 'up' : 'down'}
           />
 
           <KPICard
-            title="A Receber"
-            value={kpis.receivables}
-            format="currency"
-            change={5.3}
-            changeLabel={`${kpis.overdue_count} vencida(s)`}
+            title="Total de Registros"
+            value={financialRecords.length}
+            format="number"
+            changeLabel={`${financialRecords.filter(r => r.type === 'income').length} receita(s) / ${financialRecords.filter(r => r.type === 'expense').length} despesa(s)`}
             icon={Clock}
             gradient={premiumTheme.gradients.electric}
-            trend="down"
+            trend="up"
           />
         </motion.div>
 

@@ -30,6 +30,8 @@ Redesign visual completo de sistema de gestão jurídica preservando funcionalid
 | sessão anterior | FinanceiroPremium com KPI cards, charts, RBAC |
 | sessão anterior | Drive com pastas hierárquicas (expandir/colapsar) |
 | 30/04/2026 | **Drive validado**: pastas com docs aninhados + visualizador embutido (PDF/imagem inline) funcionando |
+| 04/05/2026 | **Agenda editável**: clique em compromisso → modal com detalhes do cliente + botões Editar/Excluir (PUT/DELETE no backend) |
+| 04/05/2026 | **Financeiro zerado**: dados mockados de invoices/expenses/trust_accounts/time_entries removidos; analytics agora deriva 100% de `financial_records` (KPIs + gráficos coerentes com a tabela editável) |
 
 ## Endpoints-chave
 - `POST /api/auth/login`, `GET /api/auth/me`

@@ -1149,96 +1149,58 @@ async def approve_expense(expense_id: str, current_user: dict = Depends(get_curr
 # ==================== ADVANCED FINANCIAL ANALYTICS ====================
 @api_router.get("/analytics/dashboard")
 async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)):
-    # Advogados podem ver analytics também (read-only)
-    
-    # Get all financial data
-    invoices = await db.invoices.find({}, {"_id": 0}).to_list(10000)
-    expenses = await db.expenses.find({"status": "approved"}, {"_id": 0}).to_list(10000)
-    trust_accounts = await db.trust_accounts.find({}, {"_id": 0}).to_list(1000)
-    time_entries = await db.time_entries.find({}, {"_id": 0}).to_list(10000)
-    
-    # Calculate KPIs
-    total_revenue = sum(inv["paid_amount"] for inv in invoices)
-    total_expenses = sum(exp["amount"] for exp in expenses)
+    """
+    Dashboard analytics derived exclusively from `financial_records`
+    so charts and KPIs stay coherent with the editable table.
+    """
+    records = await db.financial_records.find({}, {"_id": 0}).to_list(10000)
+
+    income_records = [r for r in records if r.get("type") == "income"]
+    expense_records = [r for r in records if r.get("type") == "expense"]
+
+    total_revenue = sum(r["amount"] for r in income_records)
+    total_expenses = sum(r["amount"] for r in expense_records)
     net_profit = total_revenue - total_expenses
-    
-    # Trust accounts total
-    trust_total = sum(
-        acc["balance"]["available"] + acc["balance"]["reserved"] + acc["balance"]["interest"]
-        for acc in trust_accounts
-    )
-    
-    # Receivables (unpaid invoices)
-    receivables = sum(inv["balance"] for inv in invoices if inv["status"] != "paid")
-    
-    # Overdue invoices
-    overdue_invoices = []
-    for inv in invoices:
-        if inv["status"] in ["sent", "viewed", "partial", "overdue"]:
-            try:
-                due_date_str = inv["due_date"]
-                # Handle both date and datetime strings
-                if 'T' in due_date_str:
-                    due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00'))
-                else:
-                    due_date = datetime.strptime(due_date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-                
-                if due_date < datetime.now(timezone.utc):
-                    overdue_invoices.append(inv)
-            except:
-                pass
-    
-    overdue_amount = sum(inv["balance"] for inv in overdue_invoices)
-    
-    # Billable hours not yet invoiced
-    unbilled_entries = [e for e in time_entries if e["status"] in ["draft", "approved"] and e["billable"]]
-    unbilled_amount = sum(e["amount"] for e in unbilled_entries)
-    
-    # Monthly revenue trend (last 6 months)
-    monthly_revenue = {}
-    for inv in invoices:
-        if inv["paid_amount"] > 0:
-            month = inv["issue_date"][:7]  # YYYY-MM
-            monthly_revenue[month] = monthly_revenue.get(month, 0) + inv["paid_amount"]
-    
-    # Monthly expense trend
-    monthly_expenses = {}
-    for exp in expenses:
-        month = exp["date"][:7]
-        monthly_expenses[month] = monthly_expenses.get(month, 0) + exp["amount"]
-    
-    # Combine monthly data
+    profit_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+    # Monthly aggregation from records
+    monthly_revenue: dict = {}
+    monthly_expenses: dict = {}
+    for r in income_records:
+        month = r["date"][:7]
+        monthly_revenue[month] = monthly_revenue.get(month, 0) + r["amount"]
+    for r in expense_records:
+        month = r["date"][:7]
+        monthly_expenses[month] = monthly_expenses.get(month, 0) + r["amount"]
+
     all_months = sorted(set(list(monthly_revenue.keys()) + list(monthly_expenses.keys())))[-6:]
     monthly_trend = [
         {
             "month": month,
             "revenue": monthly_revenue.get(month, 0),
             "expenses": monthly_expenses.get(month, 0),
-            "profit": monthly_revenue.get(month, 0) - monthly_expenses.get(month, 0)
+            "profit": monthly_revenue.get(month, 0) - monthly_expenses.get(month, 0),
         }
         for month in all_months
     ]
-    
+
     return {
         "kpis": {
             "total_revenue": total_revenue,
             "total_expenses": total_expenses,
             "net_profit": net_profit,
-            "profit_margin": (net_profit / total_revenue * 100) if total_revenue > 0 else 0,
-            "trust_accounts_total": trust_total,
-            "receivables": receivables,
-            "overdue_amount": overdue_amount,
-            "overdue_count": len(overdue_invoices),
-            "unbilled_amount": unbilled_amount
+            "profit_margin": profit_margin,
+            "trust_accounts_total": 0,
+            "receivables": 0,
+            "overdue_amount": 0,
+            "overdue_count": 0,
+            "unbilled_amount": 0,
         },
         "monthly_trend": monthly_trend,
         "alerts": {
-            "overdue_invoices": len(overdue_invoices),
-            "trust_reconciliation_pending": sum(
-                1 for acc in trust_accounts
-                if acc["reconciliation"]["status"] != "matched"
-            )
-        }
+            "overdue_invoices": 0,
+            "trust_reconciliation_pending": 0,
+        },
     }
 
 # Include the router in the main app
