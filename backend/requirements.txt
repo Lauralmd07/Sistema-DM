@@ -1,9 +1,14 @@
 fastapi
 uvicorn
+
 motor
 pymongo
 dnspython
+
 python-dotenv
+
 bcrypt
 passlib
+
+PyJWT
 python-jose
