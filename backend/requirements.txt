@@ -6,12 +6,15 @@ pymongo
 dnspython
 
 python-dotenv
+python-multipart
 
 bcrypt
 passlib
-
 PyJWT
 python-jose
 
 pydantic
 email-validator
+
+requests
+httpx
