@@ -12,3 +12,6 @@ passlib
 
 PyJWT
 python-jose
+
+pydantic
+email-validator
