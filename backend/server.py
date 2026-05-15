@@ -1239,15 +1239,13 @@ logger = logging.getLogger(__name__)
 # Startup event
 @app.on_event("startup")
 async def startup_event():
-    await seed_admin()
-    # Create indexes
     try:
+        await seed_admin()
         await db.users.create_index("email", unique=True)
         await db.users.create_index("id", unique=True)
-        logger.info("✅ Database indexes created")
+        logger.info("Database initialized")
     except Exception as e:
-        logger.warning(f"Index creation warning: {e}")
-
+        logger.error(f"Startup error: {e}")
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
