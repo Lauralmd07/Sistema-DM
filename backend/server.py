@@ -20,14 +20,19 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+import os
+import certifi
+from motor.motor_asyncio import AsyncIOMotorClient
+
+mongo_url = os.getenv("MONGO_URL")
 
 client = AsyncIOMotorClient(
     mongo_url,
-    serverSelectionTimeoutMS=5000
+    tlsCAFile=certifi.where(),
+    serverSelectionTimeoutMS=30000
 )
-db = client[os.environ.get('DB_NAME', 'legal_system')]
+
+db = client["legal_system"]
 
 # Create the main app without a prefix
 app = FastAPI()
