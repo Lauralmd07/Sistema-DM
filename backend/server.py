@@ -374,15 +374,18 @@ async def seed_admin():
         logger.info(f"✅ Admin password updated")
     
     # Write credentials
-    creds_path = Path("/app/memory/test_credentials.md")
-    creds_path.parent.mkdir(exist_ok=True)
+try:
+    creds_path = Path("test_credentials.md")
     creds_path.write_text(f"""# Test Credentials
 
 ## Admin Account
 - Email: {admin_email}
 - Password: {admin_password}
 - Role: admin
-
+""")
+except Exception as e:
+    logger.warning(f"Could not write credentials file: {e}")
+    
 ## Auth Endpoints
 - POST /api/auth/register
 - POST /api/auth/login
