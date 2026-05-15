@@ -1163,9 +1163,10 @@ async def approve_expense(expense_id: str, current_user: dict = Depends(get_curr
 @api_router.get("/analytics/dashboard")
 async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)):
     """
-    Dashboard analytics derived exclusively from `financial_records`
+    Dashboard analytics derived exclusively from financial_records
     so charts and KPIs stay coherent with the editable table.
     """
+
     records = await db.financial_records.find({}, {"_id": 0}).to_list(10000)
 
     income_records = [r for r in records if r.get("type") == "income"]
@@ -1174,8 +1175,11 @@ async def get_dashboard_analytics(current_user: dict = Depends(get_current_user)
     total_revenue = sum(r["amount"] for r in income_records)
     total_expenses = sum(r["amount"] for r in expense_records)
     net_profit = total_revenue - total_expenses
-    profit_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
 
+    profit_margin = (
+        (net_profit / total_revenue * 100)
+        if total_revenue > 0 else 0
+    )
     # Monthly aggregation from records
     monthly_revenue: dict = {}
     monthly_expenses: dict = {}
