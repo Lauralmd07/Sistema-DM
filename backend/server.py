@@ -169,14 +169,10 @@ class User(BaseModel):
 
 async def seed_admin():
     admin_email = os.environ.get(
-        "ADMIN_EMAIL",
-        "lauraadm@sist.com"
-    )
+       "ADMIN_EMAIL" )
 
     admin_password = os.environ.get(
-        "ADMIN_PASSWORD",
-        "Ladm848407*"
-    )
+        "ADMIN_PASSWORD" )
 
     existing = await db.users.find_one({
         "email": admin_email
