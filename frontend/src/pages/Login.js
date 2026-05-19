@@ -104,6 +104,8 @@ export const Login = () => {
 
         <div className="mt-6 p-4 bg-[#1E1E1E]/50 rounded-lg border border-[#3A3A3A]">
           <p className="text-xs text-[#F5F5F5]/60 text-center">
+          Emergent IA
+          </p>
          
         </div>
       </div>
