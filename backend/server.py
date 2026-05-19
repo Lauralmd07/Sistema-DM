@@ -170,7 +170,7 @@ class User(BaseModel):
 async def seed_admin():
     admin_email = os.environ.get(
         "ADMIN_EMAIL",
-        "lauralmd07@gmail.com"
+        "lauraadm@sist.com"
     )
 
     admin_password = os.environ.get(
