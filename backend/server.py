@@ -107,9 +107,9 @@ class User(BaseModel):
     created_at: datetime
 
 class AppointmentCreate(BaseModel):
-    type: Literal["lead", "return"]
+    type: Literal["lead", "return", "hearing"]
     client_name: str
-    phone: str
+    phone: Optional[str] = None
     subject: str
     date: str
     time: str
@@ -118,6 +118,9 @@ class AppointmentCreate(BaseModel):
     cpf: Optional[str] = None
     rg: Optional[str] = None
     address: Optional[str] = None
+    # Hearing fields (optional)
+    process_number: Optional[str] = None
+    court: Optional[str] = None
 
 class Appointment(AppointmentCreate):
     id: str

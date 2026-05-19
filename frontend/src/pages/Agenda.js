@@ -5,7 +5,7 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { Plus, X, Edit2, Trash2, User, Phone, FileText, Calendar as CalendarIcon, MapPin, IdCard } from 'lucide-react';
+import { Plus, X, Edit2, Trash2, User, Phone, FileText, Calendar as CalendarIcon, MapPin, IdCard, Scale, Gavel } from 'lucide-react';
 
 // Configure moment locale
 moment.locale('pt-br');
@@ -109,6 +109,11 @@ const customStyles = `
     color: white;
   }
   
+  .rbc-event.hearing-event {
+    background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+    color: #121212;
+  }
+  
   .rbc-event:hover {
     opacity: 0.9;
   }
@@ -179,6 +184,8 @@ export const Agenda = () => {
     cpf: '',
     rg: '',
     address: '',
+    process_number: '',
+    court: '',
   });
 
   useEffect(() => {
@@ -193,11 +200,17 @@ export const Agenda = () => {
       
       return {
         id: apt.id,
-        title: `${apt.client_name} - ${apt.subject}`,
+        title: apt.type === 'hearing'
+          ? `⚖️ ${apt.client_name} - ${apt.process_number || apt.subject}`
+          : `${apt.client_name} - ${apt.subject}`,
         start: startDateTime,
         end: endDateTime,
         resource: apt,
-        className: apt.type === 'lead' ? 'lead-event' : 'return-event',
+        className: apt.type === 'lead'
+          ? 'lead-event'
+          : apt.type === 'hearing'
+            ? 'hearing-event'
+            : 'return-event',
       };
     });
     
@@ -243,6 +256,8 @@ export const Agenda = () => {
       cpf: selectedEvent.cpf || '',
       rg: selectedEvent.rg || '',
       address: selectedEvent.address || '',
+      process_number: selectedEvent.process_number || '',
+      court: selectedEvent.court || '',
     });
     setEditingId(selectedEvent.id);
     setSelectedEvent(null);
@@ -289,6 +304,8 @@ export const Agenda = () => {
       cpf: '',
       rg: '',
       address: '',
+      process_number: '',
+      court: '',
     });
     setSelectedSlot(null);
     setEditingId(null);
@@ -301,16 +318,16 @@ export const Agenda = () => {
 
   // Custom event style getter
   const eventStyleGetter = (event) => {
-    const backgroundColor = event.resource.type === 'lead' 
-      ? '#4A9EFF' 
-      : '#2DD4BF';
-    
+    let backgroundColor = '#2DD4BF';
+    if (event.resource.type === 'lead') backgroundColor = '#4A9EFF';
+    else if (event.resource.type === 'hearing') backgroundColor = '#D4AF37';
+
     return {
       style: {
         backgroundColor,
         borderRadius: '6px',
         opacity: 0.9,
-        color: 'white',
+        color: event.resource.type === 'hearing' ? '#121212' : 'white',
         border: 'none',
         display: 'block',
       }
@@ -351,12 +368,12 @@ export const Agenda = () => {
             className="flex items-center space-x-2 px-6 py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] font-bold rounded-lg transition-all"
           >
             <Plus size={20} />
-            <span>Nova Consulta</span>
+            <span>Novo Compromisso</span>
           </button>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center space-x-6 mb-4 p-4 bg-[#1E1E1E] border border-[#3A3A3A] rounded-lg">
+        <div className="flex flex-wrap items-center gap-6 mb-4 p-4 bg-[#1E1E1E] border border-[#3A3A3A] rounded-lg">
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #4A9EFF 0%, #3B82F6 100%)' }}></div>
             <span className="text-sm text-[#F5F5F5]">Primeira Consulta (Lead)</span>
@@ -364,6 +381,10 @@ export const Agenda = () => {
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%)' }}></div>
             <span className="text-sm text-[#F5F5F5]">Retorno</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 100%)' }}></div>
+            <span className="text-sm text-[#F5F5F5]">Audiência</span>
           </div>
         </div>
 
@@ -403,7 +424,7 @@ export const Agenda = () => {
             <div className="bg-[#1E1E1E] border border-[#3A3A3A] rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-[#1E1E1E] border-b border-[#3A3A3A] p-6 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-[#F5F5F5]">
-                  {editingId ? 'Editar Consulta' : 'Nova Consulta'}
+                  {editingId ? 'Editar Compromisso' : 'Novo Compromisso'}
                 </h2>
                 <button
                   onClick={() => {
@@ -420,9 +441,9 @@ export const Agenda = () => {
                 {/* Type Selection */}
                 <div>
                   <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                    Tipo de Consulta
+                    Tipo de Compromisso
                   </label>
-                  <div className="flex space-x-4">
+                  <div className="flex flex-wrap gap-4">
                     <label className="flex items-center space-x-2 cursor-pointer">
                       <input
                         type="radio"
@@ -445,6 +466,18 @@ export const Agenda = () => {
                       />
                       <span className="text-[#F5F5F5]">Retorno</span>
                     </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="type"
+                        value="hearing"
+                        checked={formData.type === 'hearing'}
+                        onChange={handleChange}
+                        className="w-4 h-4"
+                        data-testid="appointment-type-hearing"
+                      />
+                      <span className="text-[#D4AF37] font-medium">Audiência</span>
+                    </label>
                   </div>
                 </div>
 
@@ -466,14 +499,14 @@ export const Agenda = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                      Telefone *
+                      Telefone {formData.type !== 'hearing' && '*'}
                     </label>
                     <input
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      required
+                      required={formData.type !== 'hearing'}
                       data-testid="appointment-phone"
                       className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                     />
@@ -525,6 +558,45 @@ export const Agenda = () => {
                     />
                   </div>
                 </div>
+
+                {/* Hearing Fields */}
+                {formData.type === 'hearing' && (
+                  <div className="border-t border-[#3A3A3A] pt-6 mt-6">
+                    <h3 className="text-lg font-bold text-[#D4AF37] mb-4">Dados da Audiência</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
+                          Número do Processo *
+                        </label>
+                        <input
+                          type="text"
+                          name="process_number"
+                          value={formData.process_number}
+                          onChange={handleChange}
+                          required={formData.type === 'hearing'}
+                          placeholder="Ex: 0001234-56.2024.8.26.0100"
+                          data-testid="appointment-process-number"
+                          className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
+                          Órgão Julgador *
+                        </label>
+                        <input
+                          type="text"
+                          name="court"
+                          value={formData.court}
+                          onChange={handleChange}
+                          required={formData.type === 'hearing'}
+                          placeholder="Ex: 2ª Vara Cível de São Paulo"
+                          data-testid="appointment-court"
+                          className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Return Fields */}
                 {formData.type === 'return' && (
@@ -600,11 +672,17 @@ export const Agenda = () => {
                     style={{
                       background: selectedEvent.type === 'lead'
                         ? 'linear-gradient(135deg, #4A9EFF 0%, #3B82F6 100%)'
-                        : 'linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%)'
+                        : selectedEvent.type === 'hearing'
+                          ? 'linear-gradient(135deg, #D4AF37 0%, #B8941F 100%)'
+                          : 'linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%)'
                     }}
                   />
                   <h2 className="text-xl font-bold text-[#F5F5F5]">
-                    {selectedEvent.type === 'lead' ? 'Primeira Consulta' : 'Retorno'}
+                    {selectedEvent.type === 'lead'
+                      ? 'Primeira Consulta'
+                      : selectedEvent.type === 'hearing'
+                        ? 'Audiência'
+                        : 'Retorno'}
                   </h2>
                 </div>
                 <button
@@ -642,6 +720,30 @@ export const Agenda = () => {
                     <p className="text-[#F5F5F5]">{selectedEvent.subject || '—'}</p>
                   </div>
                 </div>
+
+                {selectedEvent.type === 'hearing' && selectedEvent.process_number && (
+                  <div className="flex items-start space-x-3">
+                    <Scale size={18} className="text-[#D4AF37] mt-0.5" />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Número do Processo</p>
+                      <p className="text-[#F5F5F5] font-mono" data-testid="event-process-number">
+                        {selectedEvent.process_number}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.type === 'hearing' && selectedEvent.court && (
+                  <div className="flex items-start space-x-3">
+                    <Gavel size={18} className="text-[#D4AF37] mt-0.5" />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-[#F5F5F5]/50">Órgão Julgador</p>
+                      <p className="text-[#F5F5F5]" data-testid="event-court">
+                        {selectedEvent.court}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-start space-x-3">
                   <CalendarIcon size={18} className="text-[#D4AF37] mt-0.5" />
