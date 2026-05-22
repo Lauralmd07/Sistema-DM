@@ -465,11 +465,12 @@ frontend_url = os.getenv(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        frontend_url,
-        "http://localhost:3000",
-        "https://sistema-dm.vercel.app"
-    ],
+   allow_origins=[
+    frontend_url,
+    "http://localhost:3000",
+    "https://sistema-dm.vercel.app",
+    "https://sistema-dm-1.onrender.com"
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
