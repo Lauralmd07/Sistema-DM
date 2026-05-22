@@ -23,7 +23,7 @@ export const useAuth = () => {
 };
 
 const api = axios.create({
-  baseURL: "https://sistema-dm.onrender.com/api",
+  baseURL: "https://sistema-dm-1.onrender.com",
   withCredentials: true,
 });
 
