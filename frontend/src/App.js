@@ -1,24 +1,59 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
+
 import { AuthProvider } from './contexts/AuthContext';
+
 import { ProtectedRoute } from './components/ProtectedRoute';
+
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+
 import { Dashboard } from './pages/Dashboard';
 import { Agenda } from './pages/Agenda';
 import { Processos } from './pages/Processos';
 import { Drive } from './pages/Drive';
 import { FinanceiroPremium } from './pages/FinanceiroPremium';
+
 import './App.css';
+
+// ==================== APP ====================
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
+
+          {/* ==================== PUBLIC ==================== */}
+
+          <Route
+            path="/login"
+            element={<Login />}
+          />
+
+          <Route
+            path="/register"
+            element={<Register />}
+          />
+
+          {/* ==================== PROTECTED ==================== */}
+
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/dashboard" replace />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/dashboard"
             element={
@@ -27,7 +62,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/agenda"
             element={
@@ -36,7 +71,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/processos"
             element={
@@ -45,7 +80,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/drive"
             element={
@@ -54,7 +89,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/financeiro"
             element={
@@ -63,11 +98,18 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+
+          {/* ==================== FALLBACK ==================== */}
+
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
+
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
