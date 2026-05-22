@@ -181,10 +181,7 @@ export const Agenda = () => {
     address: '',
   });
 
-  useEffect(() => {
-    loadAppointments();
-  }, []);
-
+ 
   useEffect(() => {
     // Convert appointments to calendar events
     const calendarEvents = appointments.map(apt => {
@@ -204,16 +201,20 @@ export const Agenda = () => {
     setEvents(calendarEvents);
   }, [appointments]);
 
-  const loadAppointments = async () => {
-    try {
-      const { data } = await api.get('/appointments');
-      setAppointments(data);
-    } catch (error) {
-      // Error loading appointments
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadAppointments = useCallback(async () => {
+  try {
+    const { data } = await api.get('/appointments');
+    setAppointments(data);
+  } catch (error) {
+    // Error loading appointments
+  } finally {
+    setLoading(false);
+  }
+}, [api]);
+
+useEffect(() => {
+  loadAppointments();
+}, [loadAppointments]);
 
   const handleSelectSlot = useCallback(({ start, end }) => {
     const startMoment = moment(start);
