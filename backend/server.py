@@ -336,6 +336,15 @@ async def root():
         "message": "Sistema Jurídico API funcionando"
     }
 
+# ==================== HEALTHCHECK ====================
+
+@api_router.get("/health")
+async def health():
+    return {
+        "ok": True
+    }
+
+
 # ==================== INCLUDE ROUTER ====================
 
 app.include_router(api_router)
