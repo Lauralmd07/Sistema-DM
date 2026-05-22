@@ -171,13 +171,6 @@ class User(BaseModel):
     created_at: datetime
 
 
-class Process(BaseModel):
-    title: str
-    client: str
-    status: str
-    number: Optional[str] = None
-
-
 class Appointment(BaseModel):
     title: str
     date: str
