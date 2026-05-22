@@ -1,65 +1,80 @@
-// src/contexts/AuthContext.js
-
-import React, {
+import {
   createContext,
   useContext,
-  useState,
   useEffect,
-  useCallback,
+  useMemo,
+  useState,
 } from 'react';
 
 import axios from 'axios';
 
-// ==================== API ====================
+const AuthContext = createContext(null);
 
 const API_URL =
   process.env.REACT_APP_API_URL ||
   'https://sistema-dm.onrender.com/api';
-
-export const api = axios.create({
-  baseURL: API_URL,
-  withCredentials: true,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// ==================== CONTEXT ====================
-
-const AuthContext = createContext(null);
-
-// ==================== PROVIDER ====================
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   const [loading, setLoading] = useState(true);
 
-  const [authLoading, setAuthLoading] = useState(false);
+  // =========================
+  // AXIOS
+  // =========================
 
-  // ==================== LOAD USER ====================
+  const api = useMemo(() => {
+    const instance = axios.create({
+      baseURL: API_URL,
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  const loadUser = useCallback(async () => {
+    // Interceptor de resposta
+    instance.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          setUser(null);
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
+    return instance;
+  }, []);
+
+  // =========================
+  // CARREGAR USUÁRIO
+  // =========================
+
+  const loadUser = async () => {
     try {
+      setLoading(true);
+
       const response = await api.get('/auth/me');
 
       setUser(response.data);
-
-      return response.data;
     } catch (error) {
       setUser(null);
-
-      return null;
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadUser();
   }, []);
 
-  // ==================== LOGIN ====================
+  // =========================
+  // LOGIN
+  // =========================
 
   const login = async (email, password) => {
     try {
-      setAuthLoading(true);
-
       const response = await api.post('/auth/login', {
         email,
         password,
@@ -69,143 +84,81 @@ export const AuthProvider = ({ children }) => {
 
       return {
         success: true,
-        user: response.data,
       };
     } catch (error) {
-      console.error('Erro no login:', error);
-
       return {
         success: false,
-        error:
-          error?.response?.data?.detail ||
-          'Erro ao realizar login',
+        message:
+          error.response?.data?.detail ||
+          'Erro ao fazer login',
       };
-    } finally {
-      setAuthLoading(false);
     }
   };
 
-  // ==================== REGISTER ====================
+  // =========================
+  // REGISTER
+  // =========================
 
-  const register = async ({
-    name,
-    email,
-    password,
-    role = 'lawyer',
-  }) => {
+  const register = async (data) => {
     try {
-      setAuthLoading(true);
-
-      const response = await api.post('/auth/register', {
-        name,
-        email,
-        password,
-        role,
-      });
+      const response = await api.post(
+        '/auth/register',
+        data
+      );
 
       setUser(response.data);
 
       return {
         success: true,
-        user: response.data,
       };
     } catch (error) {
-      console.error('Erro no cadastro:', error);
-
       return {
         success: false,
-        error:
-          error?.response?.data?.detail ||
-          'Erro ao criar conta',
+        message:
+          error.response?.data?.detail ||
+          'Erro ao registrar',
       };
-    } finally {
-      setAuthLoading(false);
     }
   };
 
-  // ==================== LOGOUT ====================
+  // =========================
+  // LOGOUT
+  // =========================
 
   const logout = async () => {
     try {
       await api.post('/auth/logout');
     } catch (error) {
-      console.error('Erro no logout:', error);
-    } finally {
-      setUser(null);
+      // ignora erro
     }
+
+    setUser(null);
   };
-
-  // ==================== CHECK AUTH ====================
-
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        await loadUser();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initAuth();
-  }, [loadUser]);
-
-  // ==================== AXIOS INTERCEPTOR ====================
-
-  useEffect(() => {
-    const responseInterceptor = api.interceptors.response.use(
-      (response) => response,
-
-      async (error) => {
-        if (error?.response?.status === 401) {
-          setUser(null);
-        }
-
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      api.interceptors.response.eject(responseInterceptor);
-    };
-  }, []);
-
-  // ==================== CONTEXT VALUE ====================
-
-  const value = {
-    user,
-    setUser,
-
-    loading,
-    authLoading,
-
-    authenticated: !!user,
-
-    login,
-    register,
-    logout,
-
-    loadUser,
-
-    api,
-  };
-
-  // ==================== RENDER ====================
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        api,
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        loadUser,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
-
-// ==================== HOOK ====================
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
 
   if (!context) {
     throw new Error(
-      'useAuth deve ser usado dentro de AuthProvider'
+      'useAuth deve ser usado dentro do AuthProvider'
     );
   }
 
