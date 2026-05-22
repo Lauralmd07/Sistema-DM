@@ -59,7 +59,7 @@ export const FinanceiroPremium = () => {
     try {
       const [analyticsRes, invoicesRes, trustAccountsRes, financialRes] = await Promise.all([
         api.get('/analytics/dashboard'),
-        api.get('/invoices'),
+        api.get('/financial'),
         api.get('/trust-accounts').catch(() => ({ data: [] })),
         api.get('/financial'),
       ]);
