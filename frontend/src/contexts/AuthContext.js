@@ -12,7 +12,7 @@ export const useAuth = () => {
 };
 
 const api = axios.create({
-  baseURL: `${process.env.REACT_APP_BACKEND_URL}/api`,
+  baseURL: "https://sistema-dm.onrender.com/api",
   withCredentials: true,
 });
 
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [api]);
+ }, []);
 
   useEffect(() => {
     checkAuth();
