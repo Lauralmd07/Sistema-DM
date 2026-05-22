@@ -28,9 +28,18 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# ==================== APP ====================
+
+app = FastAPI()
+
+api_router = APIRouter(prefix="/api")
+
 # ==================== MONGODB ====================
 
 mongo_url = os.getenv("MONGO_URL")
+
+if not mongo_url:
+    raise Exception("MONGO_URL não encontrada")
 
 client = AsyncIOMotorClient(
     mongo_url,
@@ -41,17 +50,11 @@ client = AsyncIOMotorClient(
 
 db = client["legal_system"]
 
-# ==================== APP ====================
-
-app = FastAPI()
-
-api_router = APIRouter(prefix="/api")
-
 # ==================== JWT ====================
 
 JWT_ALGORITHM = "HS256"
 
-JWT_SECRET = os.environ.get(
+JWT_SECRET = os.getenv(
     "JWT_SECRET",
     secrets.token_urlsafe(64)
 )
@@ -59,9 +62,10 @@ JWT_SECRET = os.environ.get(
 # ==================== PASSWORD ====================
 
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed.decode("utf-8")
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
@@ -70,7 +74,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
         hashed_password.encode("utf-8")
     )
 
-# ==================== TOKEN ====================
+# ==================== TOKENS ====================
 
 def create_access_token(user_id: str, email: str):
     payload = {
@@ -108,7 +112,7 @@ async def get_current_user(request: Request):
     if not token:
         raise HTTPException(
             status_code=401,
-            detail="Not authenticated"
+            detail="Não autenticado"
         )
 
     try:
@@ -125,7 +129,7 @@ async def get_current_user(request: Request):
         if not user:
             raise HTTPException(
                 status_code=401,
-                detail="User not found"
+                detail="Usuário não encontrado"
             )
 
         user.pop("_id", None)
@@ -136,13 +140,13 @@ async def get_current_user(request: Request):
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=401,
-            detail="Token expired"
+            detail="Token expirado"
         )
 
     except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=401,
-            detail="Invalid token"
+            detail="Token inválido"
         )
 
 # ==================== MODELS ====================
@@ -194,22 +198,22 @@ class Invoice(BaseModel):
     amount: float
     status: str
 
-
-# ==================== ADMIN SEED ====================
+# ==================== ADMIN ====================
 
 async def seed_admin():
-    admin_email = os.environ.get("ADMIN_EMAIL")
-    admin_password = os.environ.get("ADMIN_PASSWORD")
+    admin_email = os.getenv("ADMIN_EMAIL")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+
+    if not admin_email or not admin_password:
+        return
 
     existing = await db.users.find_one({
         "email": admin_email
     })
 
     if not existing:
-        admin_id = str(uuid.uuid4())
-
         await db.users.insert_one({
-            "id": admin_id,
+            "id": str(uuid.uuid4()),
             "name": "Administrador",
             "email": admin_email,
             "password_hash": hash_password(admin_password),
@@ -222,10 +226,8 @@ async def seed_admin():
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register", response_model=User)
-async def register(
-    user_data: UserCreate,
-    response: Response
-):
+async def register(user_data: UserCreate, response: Response):
+
     existing = await db.users.find_one({
         "email": user_data.email.lower()
     })
@@ -233,7 +235,7 @@ async def register(
     if existing:
         raise HTTPException(
             status_code=400,
-            detail="Email already registered"
+            detail="Email já cadastrado"
         )
 
     user_id = str(uuid.uuid4())
@@ -261,7 +263,8 @@ async def register(
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="none"
+        samesite="none",
+        max_age=86400
     )
 
     response.set_cookie(
@@ -269,7 +272,8 @@ async def register(
         value=refresh_token,
         httponly=True,
         secure=True,
-        samesite="none"
+        samesite="none",
+        max_age=604800
     )
 
     return User(
@@ -280,12 +284,9 @@ async def register(
         created_at=user_doc["created_at"]
     )
 
-
 @api_router.post("/auth/login", response_model=User)
-async def login(
-    credentials: UserLogin,
-    response: Response
-):
+async def login(credentials: UserLogin, response: Response):
+
     user = await db.users.find_one({
         "email": credentials.email.lower()
     })
@@ -293,7 +294,7 @@ async def login(
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="Invalid credentials"
+            detail="Credenciais inválidas"
         )
 
     if not verify_password(
@@ -302,7 +303,7 @@ async def login(
     ):
         raise HTTPException(
             status_code=401,
-            detail="Invalid credentials"
+            detail="Credenciais inválidas"
         )
 
     access_token = create_access_token(
@@ -312,21 +313,26 @@ async def login(
 
     refresh_token = create_refresh_token(
         user["id"]
-    response.set_cookie(
-    key="access_token",
-    value=access_token,
-    httponly=True,
-    secure=True,
-    samesite="none"
-)
+    )
 
-response.set_cookie(
-    key="refresh_token",
-    value=refresh_token,
-    httponly=True,
-    secure=True,
-    samesite="none"
-)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=86400
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=604800
+    )
+
     return User(
         id=user["id"],
         name=user["name"],
@@ -335,51 +341,19 @@ response.set_cookie(
         created_at=user["created_at"]
     )
 
-
 @api_router.get("/auth/me")
-async def me(
-    current_user: dict = Depends(get_current_user)
-):
+async def me(current_user: dict = Depends(get_current_user)):
     return current_user
-
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
+
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
 
     return {
-        "message": "Logout successful"
+        "message": "Logout realizado"
     }
-
-# ==================== PROCESSOS ====================
-
-@api_router.get("/processes")
-async def get_processes(
-    current_user: dict = Depends(get_current_user)
-):
-    processes = await db.processes.find().to_list(100)
-
-    for process in processes:
-        process["_id"] = str(process["_id"])
-
-    return processes
-
-
-@api_router.post("/processes")
-async def create_process(
-    process: Process,
-    current_user: dict = Depends(get_current_user)
-):
-    process_doc = {
-        "id": str(uuid.uuid4()),
-        **process.dict(),
-        "created_at": datetime.now(timezone.utc)
-    }
-
-    await db.processes.insert_one(process_doc)
-
-    return process_doc
 
 # ==================== APPOINTMENTS ====================
 
@@ -393,7 +367,6 @@ async def get_appointments(
         appointment["_id"] = str(appointment["_id"])
 
     return appointments
-
 
 @api_router.post("/appointments")
 async def create_appointment(
@@ -410,118 +383,18 @@ async def create_appointment(
 
     return appointment_doc
 
-# ==================== DOCUMENTS ====================
-
-@api_router.get("/documents")
-async def get_documents(
-    current_user: dict = Depends(get_current_user)
-):
-    documents = await db.documents.find().to_list(100)
-
-    for document in documents:
-        document["_id"] = str(document["_id"])
-
-    return documents
-
-
-@api_router.post("/documents")
-async def create_document(
-    document: Document,
-    current_user: dict = Depends(get_current_user)
-):
-    document_doc = {
-        "id": str(uuid.uuid4()),
-        **document.dict(),
-        "created_at": datetime.now(timezone.utc)
-    }
-
-    await db.documents.insert_one(document_doc)
-
-    return document_doc
-
-# ==================== FOLDERS ====================
-
-@api_router.get("/folders")
-async def get_folders(
-    current_user: dict = Depends(get_current_user)
-):
-    folders = await db.folders.find().to_list(100)
-
-    for folder in folders:
-        folder["_id"] = str(folder["_id"])
-
-    return folders
-
-
-@api_router.post("/folders")
-async def create_folder(
-    folder: Folder,
-    current_user: dict = Depends(get_current_user)
-):
-    folder_doc = {
-        "id": str(uuid.uuid4()),
-        **folder.dict(),
-        "created_at": datetime.now(timezone.utc)
-    }
-
-    await db.folders.insert_one(folder_doc)
-
-    return folder_doc
-
-# ==================== INVOICES ====================
-
-@api_router.get("/invoices")
-async def get_invoices(
-    current_user: dict = Depends(get_current_user)
-):
-    invoices = await db.invoices.find().to_list(100)
-
-    for invoice in invoices:
-        invoice["_id"] = str(invoice["_id"])
-
-    return invoices
-
-
-@api_router.post("/invoices")
-async def create_invoice(
-    invoice: Invoice,
-    current_user: dict = Depends(get_current_user)
-):
-    invoice_doc = {
-        "id": str(uuid.uuid4()),
-        **invoice.dict(),
-        "created_at": datetime.now(timezone.utc)
-    }
-
-    await db.invoices.insert_one(invoice_doc)
-
-    return invoice_doc
-
 # ==================== FINANCIAL ====================
 
 @api_router.get("/financial")
 async def get_financial(
     current_user: dict = Depends(get_current_user)
 ):
-    invoices = await db.invoices.find().to_list(100)
+    records = await db.financial.find().to_list(100)
 
-    total_income = sum(
-        invoice.get("amount", 0)
-        for invoice in invoices
-        if invoice.get("status") == "paid"
-    )
+    for record in records:
+        record["_id"] = str(record["_id"])
 
-    pending = sum(
-        invoice.get("amount", 0)
-        for invoice in invoices
-        if invoice.get("status") != "paid"
-    )
-
-    return {
-        "income": total_income,
-        "pending": pending,
-        "totalInvoices": len(invoices)
-    }
+    return records
 
 # ==================== TRUST ACCOUNTS ====================
 
@@ -537,16 +410,37 @@ async def trust_accounts(
 async def dashboard(
     current_user: dict = Depends(get_current_user)
 ):
-    users_count = await db.users.count_documents({})
-    processes_count = await db.processes.count_documents({})
-    documents_count = await db.documents.count_documents({})
-    appointments_count = await db.appointments.count_documents({})
+    financial = await db.financial.find().to_list(100)
+
+    total_revenue = sum(
+        item.get("amount", 0)
+        for item in financial
+        if item.get("type") == "income"
+    )
+
+    total_expenses = sum(
+        item.get("amount", 0)
+        for item in financial
+        if item.get("type") == "expense"
+    )
+
+    net_profit = total_revenue - total_expenses
 
     return {
-        "users": users_count,
-        "processes": processes_count,
-        "documents": documents_count,
-        "appointments": appointments_count
+        "kpis": {
+            "total_revenue": total_revenue,
+            "total_expenses": total_expenses,
+            "net_profit": net_profit,
+            "profit_margin": (
+                (net_profit / total_revenue) * 100
+                if total_revenue > 0 else 0
+            )
+        },
+        "monthly_trend": [],
+        "alerts": {
+            "overdue_invoices": 0,
+            "trust_reconciliation_pending": 0
+        }
     }
 
 # ==================== ROOT ====================
@@ -565,13 +459,13 @@ async def health():
         "ok": True
     }
 
-# ==================== INCLUDE ROUTER ====================
+# ==================== ROUTER ====================
 
 app.include_router(api_router)
 
 # ==================== CORS ====================
 
-frontend_url = os.environ.get(
+frontend_url = os.getenv(
     "FRONTEND_URL",
     "http://localhost:3000"
 )
@@ -579,7 +473,9 @@ frontend_url = os.environ.get(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        frontend_url
+        frontend_url,
+        "http://localhost:3000",
+        "https://sistema-dm.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
