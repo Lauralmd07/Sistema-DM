@@ -67,7 +67,7 @@ export const FinanceiroPremium = () => {
       setAnalytics(analyticsRes.data);
       setInvoices(invoicesRes.data);
       setTrustAccounts(trustAccountsRes.data);
-      setFinancialRecords(financialRes.data);
+      (Array.isArray(financialRecords) ? financialRecords : []).forEach(record => {
     } catch (error) {
       // Error loading financial data
     } finally {
@@ -127,14 +127,22 @@ export const FinanceiroPremium = () => {
   const { kpis, monthly_trend, alerts } = analytics;
 
   // Group records by month for table view
-  const recordsByMonth = {};
-  financialRecords.forEach(record => {
-    const month = record.date.substring(0, 7); // YYYY-MM
-    if (!recordsByMonth[month]) {
-      recordsByMonth[month] = { income: [], expense: [] };
-    }
+ const recordsByMonth = {};
+
+(Array.isArray(financialRecords) ? financialRecords : []).forEach(record => {
+  const month = record.date.substring(0, 7);
+
+  if (!recordsByMonth[month]) {
+    recordsByMonth[month] = {
+      income: [],
+      expense: []
+    };
+  }
+
+  if (record.type === 'income' || record.type === 'expense') {
     recordsByMonth[month][record.type].push(record);
-  });
+  }
+});
 
   const sortedMonths = Object.keys(recordsByMonth).sort().reverse();
 
