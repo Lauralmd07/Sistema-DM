@@ -4,7 +4,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pathlib import Path
 from pydantic import BaseModel, EmailStr
-from typing import Literal
+from typing import Literal, Optional
 from datetime import datetime, timezone, timedelta
 import os
 import logging
@@ -50,6 +50,7 @@ api_router = APIRouter(prefix="/api")
 # ==================== JWT ====================
 
 JWT_ALGORITHM = "HS256"
+
 JWT_SECRET = os.environ.get(
     "JWT_SECRET",
     secrets.token_urlsafe(64)
@@ -76,7 +77,7 @@ def create_access_token(user_id: str, email: str):
         "sub": user_id,
         "email": email,
         "type": "access",
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
+        "exp": datetime.now(timezone.utc) + timedelta(days=1)
     }
 
     return jwt.encode(
@@ -165,14 +166,40 @@ class User(BaseModel):
     role: str
     created_at: datetime
 
+
+class Process(BaseModel):
+    title: str
+    client: str
+    status: str
+    number: Optional[str] = None
+
+
+class Appointment(BaseModel):
+    title: str
+    date: str
+    description: Optional[str] = None
+
+
+class Document(BaseModel):
+    title: str
+    type: Optional[str] = None
+
+
+class Folder(BaseModel):
+    name: str
+
+
+class Invoice(BaseModel):
+    title: str
+    amount: float
+    status: str
+
+
 # ==================== ADMIN SEED ====================
 
 async def seed_admin():
-    admin_email = os.environ.get(
-       "ADMIN_EMAIL" )
-
-    admin_password = os.environ.get(
-        "ADMIN_PASSWORD" )
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
 
     existing = await db.users.find_one({
         "email": admin_email
@@ -233,16 +260,16 @@ async def register(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
-        samesite="lax"
+        secure=True,
+        samesite="none"
     )
 
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax"
+        secure=True,
+        samesite="none"
     )
 
     return User(
@@ -291,16 +318,16 @@ async def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
-        samesite="lax"
+        secure=True,
+        samesite="none"
     )
 
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax"
+        secure=True,
+        samesite="none"
     )
 
     return User(
@@ -328,6 +355,203 @@ async def logout(response: Response):
         "message": "Logout successful"
     }
 
+# ==================== PROCESSOS ====================
+
+@api_router.get("/processes")
+async def get_processes(
+    current_user: dict = Depends(get_current_user)
+):
+    processes = await db.processes.find().to_list(100)
+
+    for process in processes:
+        process["_id"] = str(process["_id"])
+
+    return processes
+
+
+@api_router.post("/processes")
+async def create_process(
+    process: Process,
+    current_user: dict = Depends(get_current_user)
+):
+    process_doc = {
+        "id": str(uuid.uuid4()),
+        **process.dict(),
+        "created_at": datetime.now(timezone.utc)
+    }
+
+    await db.processes.insert_one(process_doc)
+
+    return process_doc
+
+# ==================== APPOINTMENTS ====================
+
+@api_router.get("/appointments")
+async def get_appointments(
+    current_user: dict = Depends(get_current_user)
+):
+    appointments = await db.appointments.find().to_list(100)
+
+    for appointment in appointments:
+        appointment["_id"] = str(appointment["_id"])
+
+    return appointments
+
+
+@api_router.post("/appointments")
+async def create_appointment(
+    appointment: Appointment,
+    current_user: dict = Depends(get_current_user)
+):
+    appointment_doc = {
+        "id": str(uuid.uuid4()),
+        **appointment.dict(),
+        "created_at": datetime.now(timezone.utc)
+    }
+
+    await db.appointments.insert_one(appointment_doc)
+
+    return appointment_doc
+
+# ==================== DOCUMENTS ====================
+
+@api_router.get("/documents")
+async def get_documents(
+    current_user: dict = Depends(get_current_user)
+):
+    documents = await db.documents.find().to_list(100)
+
+    for document in documents:
+        document["_id"] = str(document["_id"])
+
+    return documents
+
+
+@api_router.post("/documents")
+async def create_document(
+    document: Document,
+    current_user: dict = Depends(get_current_user)
+):
+    document_doc = {
+        "id": str(uuid.uuid4()),
+        **document.dict(),
+        "created_at": datetime.now(timezone.utc)
+    }
+
+    await db.documents.insert_one(document_doc)
+
+    return document_doc
+
+# ==================== FOLDERS ====================
+
+@api_router.get("/folders")
+async def get_folders(
+    current_user: dict = Depends(get_current_user)
+):
+    folders = await db.folders.find().to_list(100)
+
+    for folder in folders:
+        folder["_id"] = str(folder["_id"])
+
+    return folders
+
+
+@api_router.post("/folders")
+async def create_folder(
+    folder: Folder,
+    current_user: dict = Depends(get_current_user)
+):
+    folder_doc = {
+        "id": str(uuid.uuid4()),
+        **folder.dict(),
+        "created_at": datetime.now(timezone.utc)
+    }
+
+    await db.folders.insert_one(folder_doc)
+
+    return folder_doc
+
+# ==================== INVOICES ====================
+
+@api_router.get("/invoices")
+async def get_invoices(
+    current_user: dict = Depends(get_current_user)
+):
+    invoices = await db.invoices.find().to_list(100)
+
+    for invoice in invoices:
+        invoice["_id"] = str(invoice["_id"])
+
+    return invoices
+
+
+@api_router.post("/invoices")
+async def create_invoice(
+    invoice: Invoice,
+    current_user: dict = Depends(get_current_user)
+):
+    invoice_doc = {
+        "id": str(uuid.uuid4()),
+        **invoice.dict(),
+        "created_at": datetime.now(timezone.utc)
+    }
+
+    await db.invoices.insert_one(invoice_doc)
+
+    return invoice_doc
+
+# ==================== FINANCIAL ====================
+
+@api_router.get("/financial")
+async def get_financial(
+    current_user: dict = Depends(get_current_user)
+):
+    invoices = await db.invoices.find().to_list(100)
+
+    total_income = sum(
+        invoice.get("amount", 0)
+        for invoice in invoices
+        if invoice.get("status") == "paid"
+    )
+
+    pending = sum(
+        invoice.get("amount", 0)
+        for invoice in invoices
+        if invoice.get("status") != "paid"
+    )
+
+    return {
+        "income": total_income,
+        "pending": pending,
+        "totalInvoices": len(invoices)
+    }
+
+# ==================== TRUST ACCOUNTS ====================
+
+@api_router.get("/trust-accounts")
+async def trust_accounts(
+    current_user: dict = Depends(get_current_user)
+):
+    return []
+
+# ==================== ANALYTICS ====================
+
+@api_router.get("/analytics/dashboard")
+async def dashboard(
+    current_user: dict = Depends(get_current_user)
+):
+    users_count = await db.users.count_documents({})
+    processes_count = await db.processes.count_documents({})
+    documents_count = await db.documents.count_documents({})
+    appointments_count = await db.appointments.count_documents({})
+
+    return {
+        "users": users_count,
+        "processes": processes_count,
+        "documents": documents_count,
+        "appointments": appointments_count
+    }
+
 # ==================== ROOT ====================
 
 @api_router.get("/")
@@ -336,14 +560,13 @@ async def root():
         "message": "Sistema Jurídico API funcionando"
     }
 
-# ==================== HEALTHCHECK ====================
+# ==================== HEALTH ====================
 
 @api_router.get("/health")
 async def health():
     return {
         "ok": True
     }
-
 
 # ==================== INCLUDE ROUTER ====================
 
@@ -358,7 +581,9 @@ frontend_url = os.environ.get(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],
+    allow_origins=[
+        frontend_url
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
