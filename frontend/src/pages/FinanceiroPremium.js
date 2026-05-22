@@ -36,7 +36,6 @@ export const FinanceiroPremium = () => {
   const { api, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState(null);
-  const [invoices, setInvoices] = useState([]);
   const [trustAccounts, setTrustAccounts] = useState([]);
   const [financialRecords, setFinancialRecords] = useState([]);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -57,15 +56,13 @@ export const FinanceiroPremium = () => {
 
   const loadFinancialData = async () => {
     try {
-      const [analyticsRes, invoicesRes, trustAccountsRes, financialRes] = await Promise.all([
+      const [analyticsRes, trustAccountsRes, financialRes] = await Promise.all([
         api.get('/analytics/dashboard'),
-        api.get('/invoices'),
         api.get('/trust-accounts').catch(() => ({ data: [] })),
         api.get('/financial'),
       ]);
 
       setAnalytics(analyticsRes.data);
-      setInvoices(invoicesRes.data);
       setTrustAccounts(trustAccountsRes.data);
       setFinancialRecords(financialRes.data);
     } catch (error) {
@@ -186,7 +183,7 @@ export const FinanceiroPremium = () => {
         </motion.div>
 
         {/* Alerts */}
-        {alerts && (alerts.overdue_invoices > 0 || alerts.trust_reconciliation_pending > 0) && (
+        {alerts && (alerts.overdue_financial > 0 || alerts.trust_reconciliation_pending > 0) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -200,8 +197,8 @@ export const FinanceiroPremium = () => {
                     Alertas Financeiros
                   </h3>
                   <div className="space-y-1" style={{ color: premiumTheme.text.secondary }}>
-                    {alerts.overdue_invoices > 0 && (
-                      <p>• {alerts.overdue_invoices} fatura(s) vencida(s) pendente(s) de pagamento</p>
+                    {alerts.overdue_financial > 0 && (
+                      <p>• {alerts.overdue_financial} fatura(s) vencida(s) pendente(s) de pagamento</p>
                     )}
                     {alerts.trust_reconciliation_pending > 0 && (
                       <p>• {alerts.trust_reconciliation_pending} conta(s) caução pendente(s) de conciliação</p>
