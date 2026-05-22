@@ -1,176 +1,213 @@
+// src/contexts/AuthContext.js
+
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
-  useCallback
+  useCallback,
 } from 'react';
 
 import axios from 'axios';
 
-const AuthContext = createContext(null);
+// ==================== API ====================
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  'https://sistema-dm.onrender.com/api';
 
-  if (!context) {
-    throw new Error(
-      'useAuth must be used within AuthProvider'
-    );
-  }
-
-  return context;
-};
-
-const api = axios.create({
-  baseURL: "https://sistema-dm-1.onrender.com",
+export const api = axios.create({
+  baseURL: API_URL,
   withCredentials: true,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-function formatApiErrorDetail(detail) {
-  if (!detail) {
-    return 'Algo deu errado.';
-  }
+// ==================== CONTEXT ====================
 
-  if (typeof detail === 'string') {
-    return detail;
-  }
+const AuthContext = createContext(null);
 
-  if (Array.isArray(detail)) {
-    return detail
-      .map((e) => e?.msg || JSON.stringify(e))
-      .join(' ');
-  }
-
-  if (detail?.msg) {
-    return detail.msg;
-  }
-
-  return 'Erro inesperado';
-}
+// ==================== PROVIDER ====================
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   const [loading, setLoading] = useState(true);
 
-  const [error, setError] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
-  const checkAuth = useCallback(async () => {
+  // ==================== LOAD USER ====================
+
+  const loadUser = useCallback(async () => {
     try {
-      const { data } = await api.get('/auth/me');
+      const response = await api.get('/auth/me');
 
-      setUser(data);
-    } catch (err) {
+      setUser(response.data);
+
+      return response.data;
+    } catch (error) {
       setUser(null);
-    } finally {
-      setLoading(false);
+
+      return null;
     }
   }, []);
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  // ==================== LOGIN ====================
 
   const login = async (email, password) => {
     try {
-      setError(null);
+      setAuthLoading(true);
 
-      const { data } = await api.post(
-        '/auth/login',
-        {
-          email,
-          password,
-        }
-      );
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+      });
 
-      setUser(data);
+      setUser(response.data);
 
       return {
         success: true,
+        user: response.data,
       };
-
-    } catch (err) {
-      const errorMsg =
-        formatApiErrorDetail(
-          err.response?.data?.detail
-        ) || err.message;
-
-      setError(errorMsg);
+    } catch (error) {
+      console.error('Erro no login:', error);
 
       return {
         success: false,
-        error: errorMsg,
+        error:
+          error?.response?.data?.detail ||
+          'Erro ao realizar login',
       };
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  const register = async (
+  // ==================== REGISTER ====================
+
+  const register = async ({
     name,
     email,
     password,
-    role = 'lawyer'
-  ) => {
+    role = 'lawyer',
+  }) => {
     try {
-      setError(null);
+      setAuthLoading(true);
 
-      const { data } = await api.post(
-        '/auth/register',
-        {
-          name,
-          email,
-          password,
-          role,
-        }
-      );
+      const response = await api.post('/auth/register', {
+        name,
+        email,
+        password,
+        role,
+      });
 
-      setUser(data);
+      setUser(response.data);
 
       return {
         success: true,
+        user: response.data,
       };
-
-    } catch (err) {
-      const errorMsg =
-        formatApiErrorDetail(
-          err.response?.data?.detail
-        ) || err.message;
-
-      setError(errorMsg);
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
 
       return {
         success: false,
-        error: errorMsg,
+        error:
+          error?.response?.data?.detail ||
+          'Erro ao criar conta',
       };
+    } finally {
+      setAuthLoading(false);
     }
   };
+
+  // ==================== LOGOUT ====================
 
   const logout = async () => {
     try {
       await api.post('/auth/logout');
-
-      setUser(null);
-
-    } catch (err) {
-      console.error('Logout error:', err);
-
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    } finally {
       setUser(null);
     }
   };
 
+  // ==================== CHECK AUTH ====================
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        await loadUser();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, [loadUser]);
+
+  // ==================== AXIOS INTERCEPTOR ====================
+
+  useEffect(() => {
+    const responseInterceptor = api.interceptors.response.use(
+      (response) => response,
+
+      async (error) => {
+        if (error?.response?.status === 401) {
+          setUser(null);
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      api.interceptors.response.eject(responseInterceptor);
+    };
+  }, []);
+
+  // ==================== CONTEXT VALUE ====================
+
   const value = {
     user,
+    setUser,
+
     loading,
-    error,
+    authLoading,
+
+    authenticated: !!user,
+
     login,
     register,
     logout,
+
+    loadUser,
+
     api,
   };
+
+  // ==================== RENDER ====================
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+// ==================== HOOK ====================
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error(
+      'useAuth deve ser usado dentro de AuthProvider'
+    );
+  }
+
+  return context;
 };
