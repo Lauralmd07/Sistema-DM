@@ -312,24 +312,21 @@ async def login(
 
     refresh_token = create_refresh_token(
         user["id"]
-    )
-
     response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=True,
-        samesite="none"
-    )
+    key="access_token",
+    value=access_token,
+    httponly=True,
+    secure=True,
+    samesite="none"
+)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="none"
-    )
-
+response.set_cookie(
+    key="refresh_token",
+    value=refresh_token,
+    httponly=True,
+    secure=True,
+    samesite="none"
+)
     return User(
         id=user["id"],
         name=user["name"],
