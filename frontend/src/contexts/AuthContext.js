@@ -22,21 +22,14 @@ export const useAuth = () => {
   return context;
 };
 
-// ==================== API ====================
-
-export const api = axios.create({
-  baseURL: 'https://sistema-dm.onrender.com/api',
+const api = axios.create({
+  baseURL: 'https://sistema-dm-1.onrender.com',
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
-
-// ==================== ERROR FORMAT ====================
 
 function formatApiErrorDetail(detail) {
   if (!detail) {
-    return 'Algo deu errado. Tente novamente.';
+    return 'Algo deu errado.';
   }
 
   if (typeof detail === 'string') {
@@ -45,10 +38,7 @@ function formatApiErrorDetail(detail) {
 
   if (Array.isArray(detail)) {
     return detail
-      .map((item) => {
-        if (item?.msg) return item.msg;
-        return JSON.stringify(item);
-      })
+      .map((e) => e?.msg || JSON.stringify(e))
       .join(' ');
   }
 
@@ -56,65 +46,37 @@ function formatApiErrorDetail(detail) {
     return detail.msg;
   }
 
-  return String(detail);
+  return 'Erro inesperado';
 }
 
-// ==================== PROVIDER ====================
-
 export const AuthProvider = ({ children }) => {
-
   const [user, setUser] = useState(null);
 
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState(null);
 
-  // ==================== CHECK AUTH ====================
-
   const checkAuth = useCallback(async () => {
-
     try {
+      const { data } = await api.get('/auth/me');
 
-      setLoading(true);
-
-      const response = await api.get('/auth/me');
-
-      setUser(response.data);
-
+      setUser(data);
     } catch (err) {
-
-      console.error(
-        'Auth check error:',
-        err.response?.data || err.message
-      );
-
       setUser(null);
-
     } finally {
-
       setLoading(false);
-
     }
-
   }, []);
 
-  // ==================== INITIAL LOAD ====================
-
   useEffect(() => {
-
     checkAuth();
-
   }, [checkAuth]);
 
-  // ==================== LOGIN ====================
-
   const login = async (email, password) => {
-
     try {
-
       setError(null);
 
-      const response = await api.post(
+      const { data } = await api.post(
         '/auth/login',
         {
           email,
@@ -122,23 +84,17 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      setUser(response.data);
+      setUser(data);
 
       return {
         success: true,
       };
 
     } catch (err) {
-
-      console.error(
-        'Login error:',
-        err.response?.data || err.message
-      );
-
       const errorMsg =
         formatApiErrorDetail(
           err.response?.data?.detail
-        ) || 'Erro ao fazer login';
+        ) || err.message;
 
       setError(errorMsg);
 
@@ -149,20 +105,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ==================== REGISTER ====================
-
   const register = async (
     name,
     email,
     password,
     role = 'lawyer'
   ) => {
-
     try {
-
       setError(null);
 
-      const response = await api.post(
+      const { data } = await api.post(
         '/auth/register',
         {
           name,
@@ -172,23 +124,17 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      setUser(response.data);
+      setUser(data);
 
       return {
         success: true,
       };
 
     } catch (err) {
-
-      console.error(
-        'Register error:',
-        err.response?.data || err.message
-      );
-
       const errorMsg =
         formatApiErrorDetail(
           err.response?.data?.detail
-        ) || 'Erro ao registrar';
+        ) || err.message;
 
       setError(errorMsg);
 
@@ -199,29 +145,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ==================== LOGOUT ====================
-
   const logout = async () => {
-
     try {
-
       await api.post('/auth/logout');
-
-    } catch (err) {
-
-      console.error(
-        'Logout error:',
-        err.response?.data || err.message
-      );
-
-    } finally {
 
       setUser(null);
 
+    } catch (err) {
+      console.error('Logout error:', err);
+
+      setUser(null);
     }
   };
-
-  // ==================== CONTEXT VALUE ====================
 
   const value = {
     user,
@@ -230,7 +165,6 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    checkAuth,
     api,
   };
 
