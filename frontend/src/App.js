@@ -44,15 +44,10 @@ function App() {
           />
 
           {/* ==================== PROTECTED ==================== */}
-
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Navigate to="/dashboard" replace />
-              </ProtectedRoute>
-            }
-          />
+         <Route
+         path="/"
+         element={<Navigate to="/login" replace />}
+        />
 
           <Route
             path="/dashboard"
