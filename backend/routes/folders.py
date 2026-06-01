@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 router = APIRouter(
-    prefix="/api/folders",
+    prefix="folders",
     tags=["folders"]
 )
 
