@@ -1,3 +1,4 @@
+```javascript
 import React, {
   createContext,
   useContext,
@@ -21,44 +22,19 @@ export const useAuth = () => {
 };
 
 const api = axios.create({
-  baseURL: `${process.env.REACT_APP_BACKEND_URL}/api`,
+  baseURL: 'https://sistema-dm.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-function formatApiErrorDetail(detail) {
-  if (detail == null)
-    return 'Algo deu errado.';
-
-  if (typeof detail === 'string')
-    return detail;
-
-  if (Array.isArray(detail)) {
-    return detail
-      .map((e) =>
-        e && typeof e.msg === 'string'
-          ? e.msg
-          : JSON.stringify(e)
-      )
-      .filter(Boolean)
-      .join(' ');
-  }
-
-  if (detail && typeof detail.msg === 'string')
-    return detail.msg;
-
-  return String(detail);
-}
-
 export const AuthProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  // ADICIONE ISSO
   useEffect(() => {
+
     const token = localStorage.getItem('token');
 
     if (token) {
@@ -66,6 +42,7 @@ export const AuthProvider = ({ children }) => {
         'Authorization'
       ] = `Bearer ${token}`;
     }
+
   }, []);
 
   const checkAuth = useCallback(async () => {
@@ -77,8 +54,6 @@ export const AuthProvider = ({ children }) => {
       setUser(data);
 
     } catch (err) {
-
-      console.error('Auth error:', err);
 
       setUser(null);
 
@@ -98,8 +73,6 @@ export const AuthProvider = ({ children }) => {
 
     try {
 
-      setError(null);
-
       const { data } = await api.post(
         '/auth/login',
         {
@@ -108,7 +81,6 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      // SALVA TOKEN
       if (data.token) {
 
         localStorage.setItem(
@@ -131,98 +103,38 @@ export const AuthProvider = ({ children }) => {
 
       console.error(err);
 
-      const errorMsg =
-        formatApiErrorDetail(
-          err.response?.data?.detail
-        ) || err.message;
-
-      setError(errorMsg);
-
       return {
         success: false,
-        error: errorMsg
-      };
-    }
-  };
-
-  const register = async (
-    name,
-    email,
-    password,
-    role = 'lawyer'
-  ) => {
-
-    try {
-
-      setError(null);
-
-      const { data } = await api.post(
-        '/auth/register',
-        {
-          name,
-          email,
-          password,
-          role,
-        }
-      );
-
-      setUser(data);
-
-      return {
-        success: true
-      };
-
-    } catch (err) {
-
-      const errorMsg =
-        formatApiErrorDetail(
-          err.response?.data?.detail
-        ) || err.message;
-
-      setError(errorMsg);
-
-      return {
-        success: false,
-        error: errorMsg
+        error:
+          err.response?.data?.detail ||
+          err.message
       };
     }
   };
 
   const logout = async () => {
 
-    try {
+    localStorage.removeItem('token');
 
-      await api.post('/auth/logout');
+    delete api.defaults.headers.common[
+      'Authorization'
+    ];
 
-    } catch (err) {
-
-      console.error('Logout error:', err);
-
-    } finally {
-
-      localStorage.removeItem('token');
-
-      delete api.defaults.headers.common[
-        'Authorization'
-      ];
-
-      setUser(null);
-    }
-  };
-
-  const value = {
-    user,
-    loading,
-    error,
-    login,
-    register,
-    logout,
-    api,
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        api,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
+```
