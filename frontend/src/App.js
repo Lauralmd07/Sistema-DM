@@ -17,15 +17,23 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Rotas públicas */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Rotas protegidas */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
           <Route path="/processos" element={<ProtectedRoute><Processos /></ProtectedRoute>} />
           <Route path="/drive" element={<ProtectedRoute><Drive /></ProtectedRoute>} />
           <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
           <Route path="/financeiro" element={<ProtectedRoute><FinanceiroPremium /></ProtectedRoute>} />
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+
+          {/* Ao abrir o site, a primeira tela é sempre o login. */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* URLs inexistentes também voltam para o login. */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
