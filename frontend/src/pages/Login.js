@@ -1,36 +1,61 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Scale } from 'lucide-react';
+
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const googleButtonRef = useRef(null);
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !googleButtonRef.current || !window.google?.accounts?.id) return;
+
+    const handleGoogleCredential = async (response) => {
+      setLoading(true);
+      setError('');
+      const result = await loginWithGoogle(response.credential);
+      if (result.success) navigate('/dashboard');
+      else setError(result.error);
+      setLoading(false);
+    };
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredential,
+      ux_mode: 'popup',
+    });
+
+    googleButtonRef.current.innerHTML = '';
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: 'outline',
+      size: 'large',
+      width: 352,
+      text: 'continue_with',
+      shape: 'rectangular',
+      logo_alignment: 'left',
+    });
+  }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     const result = await login(email, password);
-
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.error);
-    }
-
+    if (result.success) navigate('/dashboard');
+    else setError(result.error);
     setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-[#121212] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#D4AF37] rounded-full mb-4">
             <Scale size={32} className="text-[#121212]" />
@@ -39,7 +64,6 @@ export const Login = () => {
           <p className="text-[#F5F5F5]/60">Gestão profissional para advogados</p>
         </div>
 
-        {/* Login Form */}
         <div className="bg-[#1E1E1E] rounded-xl p-8 border border-[#3A3A3A] shadow-lg">
           <h2 className="text-2xl font-bold text-[#F5F5F5] mb-6">Login</h2>
 
@@ -49,11 +73,20 @@ export const Login = () => {
             </div>
           )}
 
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <div className="flex justify-center min-h-[40px]" ref={googleButtonRef} />
+              <div className="flex items-center gap-3 my-6 text-[#F5F5F5]/40 text-xs">
+                <div className="h-px flex-1 bg-[#3A3A3A]" />
+                <span>OU</span>
+                <div className="h-px flex-1 bg-[#3A3A3A]" />
+              </div>
+            </>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Email</label>
               <input
                 type="email"
                 value={email}
@@ -66,9 +99,7 @@ export const Login = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                Senha
-              </label>
+              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Senha</label>
               <input
                 type="password"
                 value={password}
@@ -93,18 +124,9 @@ export const Login = () => {
           <div className="mt-6 text-center">
             <p className="text-[#F5F5F5]/60 text-sm">
               Não tem uma conta?{' '}
-              <Link to="/register" className="text-[#D4AF37] hover:text-[#E5C158] font-medium">
-                Registre-se
-              </Link>
+              <Link to="/register" className="text-[#D4AF37] hover:text-[#E5C158] font-medium">Registre-se</Link>
             </p>
           </div>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-[#1E1E1E]/50 rounded-lg border border-[#3A3A3A]">
-          <p className="text-xs text-[#F5F5F5]/60 text-center">
-            <strong className="text-[#D4AF37]">Demo Admin:</strong> admin@legal.com / admin123
-          </p>
         </div>
       </div>
     </div>
