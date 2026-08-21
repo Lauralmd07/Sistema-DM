@@ -15,6 +15,28 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+let refreshPromise = null;
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status !== 401 || !original || original._retry || original.url?.includes('/auth/refresh')) {
+      return Promise.reject(error);
+    }
+    original._retry = true;
+    try {
+      refreshPromise ||= api.post('/auth/refresh');
+      await refreshPromise;
+      refreshPromise = null;
+      return api(original);
+    } catch (refreshError) {
+      refreshPromise = null;
+      return Promise.reject(refreshError);
+    }
+  }
+);
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
