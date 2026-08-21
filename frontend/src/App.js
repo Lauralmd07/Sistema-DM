@@ -11,60 +11,23 @@ import { Drive } from './pages/Drive';
 import { FinanceiroPremium } from './pages/FinanceiroPremium';
 import './App.css';
 
+const basename = process.env.NODE_ENV === 'production' ? '/Sistema-DM' : '/';
+
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/agenda"
-            element={
-              <ProtectedRoute>
-                <Agenda />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/processos"
-            element={
-              <ProtectedRoute>
-                <Processos />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/drive"
-            element={
-              <ProtectedRoute>
-                <Drive />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/financeiro"
-            element={
-              <ProtectedRoute>
-                <FinanceiroPremium />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+          <Route path="/processos" element={<ProtectedRoute><Processos /></ProtectedRoute>} />
+          <Route path="/drive" element={<ProtectedRoute><Drive /></ProtectedRoute>} />
+          <Route path="/financeiro" element={<ProtectedRoute><FinanceiroPremium /></ProtectedRoute>} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
