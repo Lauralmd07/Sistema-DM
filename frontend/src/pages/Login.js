@@ -15,32 +15,61 @@ export const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !googleButtonRef.current || !window.google?.accounts?.id) return;
+    if (!GOOGLE_CLIENT_ID || !googleButtonRef.current) return undefined;
 
-    const handleGoogleCredential = async (response) => {
-      setLoading(true);
-      setError('');
-      const result = await loginWithGoogle(response.credential);
-      if (result.success) navigate('/dashboard');
-      else setError(result.error);
-      setLoading(false);
+    const renderGoogleButton = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+
+      const handleGoogleCredential = async (response) => {
+        setLoading(true);
+        setError('');
+        const result = await loginWithGoogle(response.credential);
+        if (result.success) navigate('/dashboard');
+        else setError(result.error);
+        setLoading(false);
+      };
+
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        ux_mode: 'popup',
+      });
+
+      googleButtonRef.current.innerHTML = '';
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: 352,
+        text: 'continue_with',
+        shape: 'rectangular',
+        logo_alignment: 'left',
+      });
     };
 
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleCredential,
-      ux_mode: 'popup',
-    });
+    if (window.google?.accounts?.id) {
+      renderGoogleButton();
+      return undefined;
+    }
 
-    googleButtonRef.current.innerHTML = '';
-    window.google.accounts.id.renderButton(googleButtonRef.current, {
-      theme: 'outline',
-      size: 'large',
-      width: 352,
-      text: 'continue_with',
-      shape: 'rectangular',
-      logo_alignment: 'left',
-    });
+    const existingScript = document.querySelector('script[data-google-identity]');
+    if (existingScript) {
+      existingScript.addEventListener('load', renderGoogleButton, { once: true });
+      return () => existingScript.removeEventListener('load', renderGoogleButton);
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleIdentity = 'true';
+    script.onload = renderGoogleButton;
+    script.onerror = () => setError('Não foi possível carregar o login do Google.');
+    document.head.appendChild(script);
+
+    return () => {
+      script.onload = null;
+      script.onerror = null;
+    };
   }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (e) => {
@@ -87,45 +116,19 @@ export const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                data-testid="login-email-input"
-                className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all"
-                placeholder="seu@email.com"
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required data-testid="login-email-input" className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all" placeholder="seu@email.com" />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                data-testid="login-password-input"
-                className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all"
-                placeholder="••••••••"
-              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required data-testid="login-password-input" className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all" placeholder="••••••••" />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              data-testid="login-submit-btn"
-              className="w-full py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button type="submit" disabled={loading} data-testid="login-submit-btn" className="w-full py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-[#F5F5F5]/60 text-sm">
-              Não tem uma conta?{' '}
-              <Link to="/register" className="text-[#D4AF37] hover:text-[#E5C158] font-medium">Registre-se</Link>
-            </p>
+            <p className="text-[#F5F5F5]/60 text-sm">Não tem uma conta?{' '}<Link to="/register" className="text-[#D4AF37] hover:text-[#E5C158] font-medium">Registre-se</Link></p>
           </div>
         </div>
       </div>
