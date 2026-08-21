@@ -66,6 +66,15 @@ export const Login = () => {
       );
     };
 
+    if (!document.querySelector('script[data-google-gsi]')) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.dataset.googleGsi = 'true';
+      document.head.appendChild(script);
+    }
+
     renderGoogleButton();
 
     return () => {
@@ -94,7 +103,6 @@ export const Login = () => {
   return (
     <div className="min-h-screen bg-[#121212] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#D4AF37] rounded-full mb-4">
             <Scale size={32} className="text-[#121212]" />
@@ -103,7 +111,6 @@ export const Login = () => {
           <p className="text-[#F5F5F5]/60">Gestão profissional para advogados</p>
         </div>
 
-        {/* Login Form */}
         <div className="bg-[#1E1E1E] rounded-xl p-8 border border-[#3A3A3A] shadow-lg">
           <h2 className="text-2xl font-bold text-[#F5F5F5] mb-6">Login</h2>
 
@@ -115,9 +122,7 @@ export const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Email</label>
               <input
                 type="email"
                 value={email}
@@ -130,9 +135,7 @@ export const Login = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">
-                Senha
-              </label>
+              <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Senha</label>
               <input
                 type="password"
                 value={password}
