@@ -31,11 +31,15 @@ def _db(request: Request):
     return request.app.state.db
 
 
+def _scope(user: dict) -> dict:
+    return {} if user.get("role") == "admin" else {"owner_id": user["id"]}
+
+
 @router.get("")
 @router.get("/")
 async def list_folders(request: Request):
     user = await get_current_user(request)
-    cursor = _db(request).folders.find({"owner_id": user["id"]}).sort("created_at", -1)
+    cursor = _db(request).folders.find(_scope(user)).sort("created_at", -1)
     return [_clean(doc) async for doc in cursor]
 
 
@@ -64,20 +68,23 @@ async def update_folder(folder_id: str, data: FolderUpdate, request: Request):
     if not updates:
         raise HTTPException(status_code=400, detail="No changes supplied")
     updates["updated_at"] = datetime.now(timezone.utc)
-    result = await _db(request).folders.update_one(
-        {"id": folder_id, "owner_id": user["id"]}, {"$set": updates}
-    )
+    selector = {"id": folder_id, **_scope(user)}
+    result = await _db(request).folders.update_one(selector, {"$set": updates})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Folder not found")
-    return _clean(await _db(request).folders.find_one({"id": folder_id, "owner_id": user["id"]}))
+    return _clean(await _db(request).folders.find_one(selector))
 
 
 @router.delete("/{folder_id}")
 async def delete_folder(folder_id: str, request: Request):
     user = await get_current_user(request)
-    folder = await _db(request).folders.find_one({"id": folder_id, "owner_id": user["id"]})
+    selector = {"id": folder_id, **_scope(user)}
+    folder = await _db(request).folders.find_one(selector)
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
-    await _db(request).documents.delete_many({"folder_id": folder_id, "owner_id": user["id"]})
-    await _db(request).folders.delete_one({"id": folder_id, "owner_id": user["id"]})
+    document_scope = {"folder_id": folder_id}
+    if user.get("role") != "admin":
+        document_scope["owner_id"] = user["id"]
+    await _db(request).documents.delete_many(document_scope)
+    await _db(request).folders.delete_one(selector)
     return {"success": True}
