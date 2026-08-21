@@ -49,11 +49,15 @@ def _db(request: Request):
     return request.app.state.db
 
 
+def _scope(user: dict) -> dict:
+    return {} if user.get("role") == "admin" else {"owner_id": user["id"]}
+
+
 @router.get("")
 @router.get("/")
 async def list_appointments(request: Request):
     user = await get_current_user(request)
-    cursor = _db(request).appointments.find({"owner_id": user["id"]}).sort([("date", 1), ("time", 1)])
+    cursor = _db(request).appointments.find(_scope(user)).sort([("date", 1), ("time", 1)])
     return [_clean(doc) async for doc in cursor]
 
 
@@ -63,12 +67,7 @@ async def create_appointment(data: AppointmentBase, request: Request):
     user = await get_current_user(request)
     now = datetime.now(timezone.utc)
     appointment = data.model_dump()
-    appointment.update({
-        "id": str(uuid.uuid4()),
-        "owner_id": user["id"],
-        "created_at": now,
-        "updated_at": now,
-    })
+    appointment.update({"id": str(uuid.uuid4()), "owner_id": user["id"], "created_at": now, "updated_at": now})
     await _db(request).appointments.insert_one(appointment)
     return _clean(appointment)
 
@@ -80,19 +79,17 @@ async def update_appointment(appointment_id: str, data: AppointmentUpdate, reque
     if not updates:
         raise HTTPException(status_code=400, detail="No changes supplied")
     updates["updated_at"] = datetime.now(timezone.utc)
-    result = await _db(request).appointments.update_one(
-        {"id": appointment_id, "owner_id": user["id"]},
-        {"$set": updates},
-    )
+    selector = {"id": appointment_id, **_scope(user)}
+    result = await _db(request).appointments.update_one(selector, {"$set": updates})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Appointment not found")
-    return _clean(await _db(request).appointments.find_one({"id": appointment_id, "owner_id": user["id"]}))
+    return _clean(await _db(request).appointments.find_one(selector))
 
 
 @router.delete("/{appointment_id}")
 async def delete_appointment(appointment_id: str, request: Request):
     user = await get_current_user(request)
-    result = await _db(request).appointments.delete_one({"id": appointment_id, "owner_id": user["id"]})
+    result = await _db(request).appointments.delete_one({"id": appointment_id, **_scope(user)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Appointment not found")
     return {"success": True}
