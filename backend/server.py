@@ -28,12 +28,7 @@ if not mongo_url:
     raise RuntimeError("MONGO_URL is not configured")
 
 db_name = os.environ.get("DB_NAME", "legal_system").strip() or "legal_system"
-client = AsyncIOMotorClient(
-    mongo_url,
-    serverSelectionTimeoutMS=10000,
-    maxPoolSize=50,
-    minPoolSize=1,
-)
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=10000, maxPoolSize=50, minPoolSize=1)
 db = client[db_name]
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
@@ -44,7 +39,6 @@ JWT_ALGORITHM = "HS256"
 app = FastAPI(title="Sistema DM API", version="1.1.0")
 app.state.db = db
 app.state.jwt_secret = JWT_SECRET
-
 api_router = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -59,33 +53,25 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(user_id: str, email: str):
-    payload = {
+    return jwt.encode({
         "sub": user_id,
         "email": email,
         "type": "access",
         "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    }, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def create_refresh_token(user_id: str):
-    payload = {
+    return jwt.encode({
         "sub": user_id,
         "type": "refresh",
         "exp": datetime.now(timezone.utc) + timedelta(days=7),
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    }, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
-    response.set_cookie(
-        key="access_token", value=access_token, httponly=True, secure=True,
-        samesite="none", max_age=900, path="/"
-    )
-    response.set_cookie(
-        key="refresh_token", value=refresh_token, httponly=True, secure=True,
-        samesite="none", max_age=604800, path="/"
-    )
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=900, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
 
 
 async def get_current_user(request: Request):
@@ -179,11 +165,7 @@ async def refresh(request: Request, response: Response):
         user = await db.users.find_one({"id": payload["sub"]})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        access = create_access_token(user["id"], user["email"])
-        response.set_cookie(
-            key="access_token", value=access, httponly=True, secure=True,
-            samesite="none", max_age=900, path="/"
-        )
+        response.set_cookie(key="access_token", value=create_access_token(user["id"], user["email"]), httponly=True, secure=True, samesite="none", max_age=900, path="/")
         return {"success": True}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
@@ -218,13 +200,7 @@ async def health():
         raise HTTPException(status_code=503, detail="Database unavailable")
 
 
-# Configure Google authentication with the same DB/JWT functions used by password login.
-configure_google_auth(
-    db,
-    create_access_token,
-    create_refresh_token,
-    os.environ.get("GOOGLE_CLIENT_ID", "").strip(),
-)
+configure_google_auth(db, create_access_token, create_refresh_token, os.environ.get("GOOGLE_CLIENT_ID", "").strip())
 
 app.include_router(api_router)
 app.include_router(google_router, prefix="/api")
@@ -234,7 +210,7 @@ app.include_router(folders_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(financial_router, prefix="/api")
 
-frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000").strip()
+frontend_url = os.environ.get("FRONTEND_URL", "").strip()
 allowed_origins = [origin.strip().rstrip("/") for origin in frontend_url.split(",") if origin.strip()]
 if not allowed_origins:
     raise RuntimeError("FRONTEND_URL is not configured")
@@ -259,6 +235,24 @@ async def startup_event():
     await db.folders.create_index([("owner_id", 1), ("created_at", -1)])
     await db.documents.create_index([("owner_id", 1), ("folder_id", 1), ("created_at", -1)])
     await db.financial.create_index([("date", -1)])
+
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    if admin_email and admin_password:
+        if len(admin_password) < 8:
+            logger.warning("ADMIN_PASSWORD is too short; admin bootstrap skipped")
+        elif not await db.users.find_one({"email": admin_email}):
+            admin = {
+                "id": str(uuid.uuid4()),
+                "name": "Administrador",
+                "email": admin_email,
+                "password_hash": hash_password(admin_password),
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc),
+                "auth_provider": "password",
+            }
+            await db.users.insert_one(admin)
+            logger.info("Admin account bootstrapped from environment")
 
 
 @app.on_event("shutdown")
