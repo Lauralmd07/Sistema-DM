@@ -1,3 +1,4 @@
+from base64 import b64encode, b64decode
 from datetime import datetime, timezone
 import uuid
 
@@ -21,10 +22,7 @@ def _db(request: Request):
 @router.get("/")
 async def list_documents(request: Request):
     user = await get_current_user(request)
-    cursor = _db(request).documents.find(
-        {"owner_id": user["id"]},
-        {"file_data": 0},
-    ).sort("created_at", -1)
+    cursor = _db(request).documents.find({"owner_id": user["id"]}).sort("created_at", -1)
     return [_clean(doc) async for doc in cursor]
 
 
@@ -64,7 +62,7 @@ async def upload_document(
         "filename": file.filename or "documento",
         "file_type": content_type,
         "size": len(content),
-        "file_data": content.hex(),
+        "file_data": b64encode(content).decode("ascii"),
         "created_at": now,
         "updated_at": now,
     }
@@ -79,11 +77,11 @@ async def get_document_content(document_id: str, request: Request):
     document = await _db(request).documents.find_one({"id": document_id, "owner_id": user["id"]})
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-    from fastapi.responses import Response
     try:
-        content = bytes.fromhex(document["file_data"])
+        content = b64decode(document["file_data"], validate=True)
     except (KeyError, ValueError):
         raise HTTPException(status_code=500, detail="Stored document is corrupted")
+    from fastapi.responses import Response
     return Response(
         content=content,
         media_type=document.get("file_type", "application/octet-stream"),
