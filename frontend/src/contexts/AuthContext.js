@@ -23,7 +23,7 @@ export const useAuth = () => {
 };
 
 const api = axios.create({
-  baseURL: 'https://sistema-dm.onrender.com/api',
+  baseURL: process.env.REACT_APP_API_URL || 'https://sistema-dm.onrender.com/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -37,23 +37,14 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const checkAuth = useCallback(async () => {
-
     try {
-
       const { data } = await api.get('/auth/me');
-
       setUser(data);
-
     } catch (err) {
-
       setUser(null);
-
     } finally {
-
       setLoading(false);
-
     }
-
   }, []);
 
   useEffect(() => {
@@ -61,9 +52,7 @@ export const AuthProvider = ({ children }) => {
   }, [checkAuth]);
 
   const login = async (email, password) => {
-
     try {
-
       setError(null);
 
       const { data } = await api.post(
@@ -81,12 +70,43 @@ export const AuthProvider = ({ children }) => {
       };
 
     } catch (err) {
-
       console.error(err);
 
       const errorMsg =
         err.response?.data?.detail ||
         'Erro ao fazer login';
+
+      setError(errorMsg);
+
+      return {
+        success: false,
+        error: errorMsg
+      };
+    }
+  };
+
+  const loginWithGoogle = async (credential) => {
+    try {
+      setError(null);
+
+      const { data } = await api.post(
+        '/auth/google',
+        { credential }
+      );
+
+      setUser(data);
+
+      return {
+        success: true,
+        user: data
+      };
+
+    } catch (err) {
+      console.error(err);
+
+      const errorMsg =
+        err.response?.data?.detail ||
+        'Erro ao entrar com Google';
 
       setError(errorMsg);
 
@@ -103,9 +123,7 @@ export const AuthProvider = ({ children }) => {
     password,
     role = 'lawyer'
   ) => {
-
     try {
-
       setError(null);
 
       const { data } = await api.post(
@@ -125,7 +143,6 @@ export const AuthProvider = ({ children }) => {
       };
 
     } catch (err) {
-
       console.error(err);
 
       const errorMsg =
@@ -142,17 +159,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-
     try {
-
       await api.post('/auth/logout');
-
     } catch (err) {
-
       console.error(err);
-
     } finally {
-
       setUser(null);
     }
   };
@@ -162,6 +173,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     login,
+    loginWithGoogle,
     register,
     logout,
     api,
