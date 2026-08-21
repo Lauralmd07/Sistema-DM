@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Scale } from 'lucide-react';
@@ -8,8 +8,72 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const googleButtonRef = useRef(null);
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+    if (!clientId) {
+      console.warn('REACT_APP_GOOGLE_CLIENT_ID não configurado.');
+      return undefined;
+    }
+
+    let attempts = 0;
+    let timer;
+
+    const renderGoogleButton = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current) {
+        attempts += 1;
+        if (attempts < 50) {
+          timer = window.setTimeout(renderGoogleButton, 100);
+        }
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          setLoading(true);
+          setError('');
+
+          const result = await loginWithGoogle(response.credential);
+
+          if (result.success) {
+            navigate('/dashboard');
+          } else {
+            setError(result.error);
+          }
+
+          setLoading(false);
+        },
+      });
+
+      googleButtonRef.current.innerHTML = '';
+
+      window.google.accounts.id.renderButton(
+        googleButtonRef.current,
+        {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'rectangular',
+          width: 352,
+          logo_alignment: 'left',
+        }
+      );
+    };
+
+    renderGoogleButton();
+
+    return () => {
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,6 +154,18 @@ export const Login = () => {
             </button>
           </form>
 
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[#3A3A3A]" />
+            <span className="text-xs text-[#F5F5F5]/40">OU</span>
+            <div className="h-px flex-1 bg-[#3A3A3A]" />
+          </div>
+
+          <div
+            ref={googleButtonRef}
+            className="min-h-[40px] flex justify-center"
+            aria-label="Entrar com Google"
+          />
+
           <div className="mt-6 text-center">
             <p className="text-[#F5F5F5]/60 text-sm">
               Não tem uma conta?{' '}
@@ -98,13 +174,6 @@ export const Login = () => {
               </Link>
             </p>
           </div>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-[#1E1E1E]/50 rounded-lg border border-[#3A3A3A]">
-          <p className="text-xs text-[#F5F5F5]/60 text-center">
-            <strong className="text-[#D4AF37]">Demo Admin:</strong> admin@legal.com / admin123
-          </p>
         </div>
       </div>
     </div>
