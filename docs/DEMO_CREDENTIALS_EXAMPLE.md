@@ -1,19 +1,25 @@
-# Credenciais de exemplo — INATIVAS
+# Configuração de acesso
 
-Este arquivo serve apenas como referência de configuração e **não contém credenciais válidas**.
+Este arquivo não contém credenciais válidas.
 
-Não use estes valores para login, não os coloque no Render e não os utilize em produção.
+## Administrador
 
-## Exemplo de administrador
+A conta administrativa é criada pelo backend quando estas variáveis de ambiente estão configuradas:
 
-- E-mail: `admin@example.invalid`
-- Senha: `EXEMPLO_INATIVO_NAO_UTILIZAR`
+- `ADMIN_NAME`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
 
-## Exemplo de advogado
+A senha deve ter pelo menos 8 caracteres.
 
-- E-mail: `advogado@example.invalid`
-- Senha: `EXEMPLO_INATIVO_NAO_UTILIZAR`
+## Advogados
 
-## Configuração real
+Novos cadastros públicos são criados automaticamente com a função `lawyer`. O cliente não consegue escolher `admin` pelo formulário de cadastro.
 
-As contas reais devem ser criadas pelo fluxo de cadastro/login do sistema. Segredos de produção, como `MONGO_URL`, `JWT_SECRET` e `GOOGLE_CLIENT_ID`, devem permanecer somente nas variáveis de ambiente do serviço, nunca em arquivos versionados.
+## Google
+
+O login com Google exige `GOOGLE_CLIENT_ID` no backend e `REACT_APP_GOOGLE_CLIENT_ID` no frontend. O Client ID deve ser configurado no Google Cloud Console com a origem autorizada do frontend e os ambientes usados durante o desenvolvimento.
+
+## Segurança
+
+Nunca coloque `MONGO_URL`, `JWT_SECRET`, `ADMIN_PASSWORD`, credenciais do Google ou outras chaves privadas em arquivos versionados. Use as variáveis de ambiente do Render/GitHub Actions.
