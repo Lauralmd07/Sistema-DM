@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, Form
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -96,15 +96,12 @@ class UserCreate(BaseModel):
     password: str
     role: Literal["admin", "lawyer"] = "lawyer"
 
-
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-
 class GoogleLogin(BaseModel):
     credential: str
-
 
 class User(BaseModel):
     id: str
@@ -112,7 +109,6 @@ class User(BaseModel):
     email: EmailStr
     role: Literal["admin", "lawyer"]
     created_at: datetime
-
 
 class ClientCreate(BaseModel):
     full_name: str
@@ -138,7 +134,6 @@ async def register(user_data: UserCreate, response: Response):
     set_auth_cookies(response, user_id, email)
     return User(id=user_id, name=user_data.name, email=email, role=user_data.role, created_at=created_at)
 
-
 @api_router.post("/auth/login", response_model=User)
 async def login(credentials: UserLogin, response: Response):
     email = credentials.email.lower()
@@ -152,7 +147,6 @@ async def login(credentials: UserLogin, response: Response):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     set_auth_cookies(response, user["id"], user["email"])
     return User(id=user["id"], name=user["name"], email=user["email"], role=user["role"], created_at=user["created_at"])
-
 
 @api_router.post("/auth/google", response_model=User)
 async def google_login(data: GoogleLogin, response: Response):
@@ -179,11 +173,9 @@ async def google_login(data: GoogleLogin, response: Response):
     set_auth_cookies(response, user["id"], user["email"])
     return User(id=user["id"], name=user["name"], email=user["email"], role=user["role"], created_at=user["created_at"])
 
-
 @api_router.get("/auth/me")
 async def me(current_user: dict = Depends(get_current_user)):
     return current_user
-
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
@@ -191,12 +183,10 @@ async def logout(response: Response):
     response.delete_cookie(key="refresh_token", path="/")
     return {"message": "Logout successful"}
 
-
 # ==================== CLIENTES ====================
 @api_router.get("/clients")
 async def list_clients(current_user: dict = Depends(get_current_user)):
     return [clean(x) async for x in db.clients.find({"owner_id": current_user["id"]}).sort("full_name", 1)]
-
 
 @api_router.post("/clients")
 async def create_client(data: ClientCreate, current_user: dict = Depends(get_current_user)):
@@ -205,14 +195,12 @@ async def create_client(data: ClientCreate, current_user: dict = Depends(get_cur
     await db.clients.insert_one(client_doc)
     return clean(client_doc)
 
-
 @api_router.put("/clients/{client_id}")
 async def update_client(client_id: str, data: ClientCreate, current_user: dict = Depends(get_current_user)):
     result = await db.clients.update_one({"id": client_id, "owner_id": current_user["id"]}, {"$set": data.model_dump()})
     if not result.matched_count:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
     return clean(await db.clients.find_one({"id": client_id, "owner_id": current_user["id"]}))
-
 
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, current_user: dict = Depends(get_current_user)):
@@ -222,14 +210,12 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
     await db.client_documents.delete_many({"client_id": client_id, "owner_id": current_user["id"]})
     return {"success": True}
 
-
 @api_router.get("/clients/{client_id}/documents")
 async def list_client_documents(client_id: str, current_user: dict = Depends(get_current_user)):
     if not await db.clients.find_one({"id": client_id, "owner_id": current_user["id"]}):
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
     cursor = db.client_documents.find({"client_id": client_id, "owner_id": current_user["id"]}, {"_id": 0, "file_data": 0}).sort("created_at", -1)
     return await cursor.to_list(length=500)
-
 
 @api_router.post("/clients/{client_id}/documents")
 async def upload_client_document(client_id: str, file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
@@ -242,14 +228,12 @@ async def upload_client_document(client_id: str, file: UploadFile = File(...), c
     await db.client_documents.insert_one(doc)
     return {k: v for k, v in clean(dict(doc)).items() if k != "file_data"}
 
-
 @api_router.get("/clients/{client_id}/documents/{document_id}")
 async def get_client_document(client_id: str, document_id: str, current_user: dict = Depends(get_current_user)):
     doc = await db.client_documents.find_one({"id": document_id, "client_id": client_id, "owner_id": current_user["id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     return doc
-
 
 @api_router.delete("/clients/{client_id}/documents/{document_id}")
 async def delete_client_document(client_id: str, document_id: str, current_user: dict = Depends(get_current_user)):
@@ -258,12 +242,10 @@ async def delete_client_document(client_id: str, document_id: str, current_user:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     return {"success": True}
 
-
 # ==================== AGENDA ====================
 @api_router.get("/appointments")
 async def list_appointments(current_user: dict = Depends(get_current_user)):
     return [clean(x) async for x in db.appointments.find({"owner_id": current_user["id"]}).sort([("date", 1), ("time", 1)])]
-
 
 @api_router.post("/appointments")
 async def create_appointment(request: Request, current_user: dict = Depends(get_current_user)):
@@ -276,7 +258,6 @@ async def create_appointment(request: Request, current_user: dict = Depends(get_
     await db.appointments.insert_one(doc)
     return clean(doc)
 
-
 @api_router.put("/appointments/{appointment_id}")
 async def update_appointment(appointment_id: str, request: Request, current_user: dict = Depends(get_current_user)):
     data = await json_body(request)
@@ -285,7 +266,6 @@ async def update_appointment(appointment_id: str, request: Request, current_user
         raise HTTPException(status_code=404, detail="Compromisso não encontrado")
     return clean(await db.appointments.find_one({"id": appointment_id, "owner_id": current_user["id"]}))
 
-
 @api_router.delete("/appointments/{appointment_id}")
 async def delete_appointment(appointment_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.appointments.delete_one({"id": appointment_id, "owner_id": current_user["id"]})
@@ -293,12 +273,10 @@ async def delete_appointment(appointment_id: str, current_user: dict = Depends(g
         raise HTTPException(status_code=404, detail="Compromisso não encontrado")
     return {"success": True}
 
-
 # ==================== PROCESSOS ====================
 @api_router.get("/processes")
 async def list_processes(current_user: dict = Depends(get_current_user)):
     return [clean(x) async for x in db.processes.find({"owner_id": current_user["id"]}).sort("created_at", -1)]
-
 
 @api_router.post("/processes")
 async def create_process(request: Request, current_user: dict = Depends(get_current_user)):
@@ -314,7 +292,6 @@ async def create_process(request: Request, current_user: dict = Depends(get_curr
     await db.processes.insert_one(doc)
     return clean(doc)
 
-
 @api_router.put("/processes/{process_id}")
 async def update_process(process_id: str, request: Request, current_user: dict = Depends(get_current_user)):
     data = await json_body(request)
@@ -324,7 +301,6 @@ async def update_process(process_id: str, request: Request, current_user: dict =
         raise HTTPException(status_code=404, detail="Processo não encontrado")
     return clean(await db.processes.find_one({"id": process_id, "owner_id": current_user["id"]}))
 
-
 @api_router.delete("/processes/{process_id}")
 async def delete_process(process_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.processes.delete_one({"id": process_id, "owner_id": current_user["id"]})
@@ -332,12 +308,10 @@ async def delete_process(process_id: str, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Processo não encontrado")
     return {"success": True}
 
-
-# ==================== DRIVE JURIDICO ====================
+# ==================== DRIVE ====================
 @api_router.get("/folders")
 async def list_folders(current_user: dict = Depends(get_current_user)):
     return [clean(x) async for x in db.folders.find({"owner_id": current_user["id"]}).sort("created_at", -1)]
-
 
 @api_router.post("/folders")
 async def create_folder(request: Request, current_user: dict = Depends(get_current_user)):
@@ -348,7 +322,6 @@ async def create_folder(request: Request, current_user: dict = Depends(get_curre
     await db.folders.insert_one(doc)
     return clean(doc)
 
-
 @api_router.delete("/folders/{folder_id}")
 async def delete_folder(folder_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.folders.delete_one({"id": folder_id, "owner_id": current_user["id"]})
@@ -357,17 +330,13 @@ async def delete_folder(folder_id: str, current_user: dict = Depends(get_current
     await db.documents.delete_many({"folder_id": folder_id, "owner_id": current_user["id"]})
     return {"success": True}
 
-
 @api_router.get("/documents")
 async def list_documents(current_user: dict = Depends(get_current_user)):
     cursor = db.documents.find({"owner_id": current_user["id"]}, {"_id": 0, "file_data": 0}).sort("created_at", -1)
     return await cursor.to_list(length=1000)
 
-
 @api_router.post("/documents/upload")
-async def upload_document(folder_id: str = None, file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-    if not folder_id:
-        raise HTTPException(status_code=422, detail="Pasta é obrigatória")
+async def upload_document(folder_id: str = Form(...), file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     if not await db.folders.find_one({"id": folder_id, "owner_id": current_user["id"]}):
         raise HTTPException(status_code=404, detail="Pasta não encontrada")
     content = await file.read()
@@ -377,14 +346,12 @@ async def upload_document(folder_id: str = None, file: UploadFile = File(...), c
     await db.documents.insert_one(doc)
     return {k: v for k, v in clean(dict(doc)).items() if k != "file_data"}
 
-
 @api_router.get("/documents/{document_id}")
 async def get_document(document_id: str, current_user: dict = Depends(get_current_user)):
     doc = await db.documents.find_one({"id": document_id, "owner_id": current_user["id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     return doc
-
 
 @api_router.delete("/documents/{document_id}")
 async def delete_document(document_id: str, current_user: dict = Depends(get_current_user)):
@@ -393,18 +360,15 @@ async def delete_document(document_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     return {"success": True}
 
-
 # ==================== FINANCEIRO ====================
 async def financial_records(owner_id: str):
     return await db.financial_records.find({"owner_id": owner_id}, {"_id": 0}).sort("date", -1).to_list(length=5000)
-
 
 @api_router.get("/financial")
 async def list_financial(current_user: dict = Depends(get_current_user)):
     if current_user.get("role") == "admin":
         return await db.financial_records.find({}, {"_id": 0}).sort("date", -1).to_list(length=5000)
     return await financial_records(current_user["id"])
-
 
 @api_router.post("/financial")
 async def create_financial(request: Request, current_user: dict = Depends(get_current_user)):
@@ -421,7 +385,6 @@ async def create_financial(request: Request, current_user: dict = Depends(get_cu
     await db.financial_records.insert_one(doc)
     return clean(doc)
 
-
 @api_router.delete("/financial/{record_id}")
 async def delete_financial(record_id: str, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
@@ -431,11 +394,9 @@ async def delete_financial(record_id: str, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=404, detail="Registro financeiro não encontrado")
     return {"success": True}
 
-
 @api_router.get("/trust-accounts")
 async def list_trust_accounts(current_user: dict = Depends(get_current_user)):
     return await db.trust_accounts.find({}, {"_id": 0}).to_list(length=1000)
-
 
 @api_router.get("/analytics/dashboard")
 async def analytics_dashboard(current_user: dict = Depends(get_current_user)):
@@ -447,15 +408,14 @@ async def analytics_dashboard(current_user: dict = Depends(get_current_user)):
         month = str(r.get("date", ""))[:7]
         if month:
             by_month.setdefault(month, {"income": 0, "expense": 0})
-            by_month[month][r.get("type", "income")] += float(r.get("amount", 0))
+            if r.get("type") in ("income", "expense"):
+                by_month[month][r["type"]] += float(r.get("amount", 0))
     monthly_trend = [{"month": k, **v} for k, v in sorted(by_month.items())]
-    return {"kpis": {"total_income": income, "total_expenses": expense, "balance": income - expense, "income": income, "expenses": expense, "balance": income - expense}, "monthly_trend": monthly_trend, "alerts": []}
-
+    return {"kpis": {"total_income": income, "total_expenses": expense, "balance": income - expense, "income": income, "expenses": expense}, "monthly_trend": monthly_trend, "alerts": []}
 
 @api_router.get("/")
 async def root():
     return {"message": "API Online"}
-
 
 @api_router.get("/health")
 async def health():
@@ -466,13 +426,10 @@ async def health():
         logger.exception("Database health check failed")
         raise HTTPException(status_code=503, detail=f"Database unavailable: {exc.__class__.__name__}")
 
-
 app.include_router(api_router)
-
 frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 allowed_origins = [x.strip() for x in frontend_url.split(",") if x.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=allowed_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
 
 @app.on_event("startup")
 async def startup_event():
