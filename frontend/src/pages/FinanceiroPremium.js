@@ -39,6 +39,7 @@ export const FinanceiroPremium = () => {
   const [trustAccounts, setTrustAccounts] = useState([]);
   const [financialRecords, setFinancialRecords] = useState([]);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [error, setError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [newRecord, setNewRecord] = useState({
     type: 'income',
@@ -56,6 +57,7 @@ export const FinanceiroPremium = () => {
 
   const loadFinancialData = async () => {
     try {
+      setError('');
       const [analyticsRes, trustAccountsRes, financialRes] = await Promise.all([
         api.get('/analytics/dashboard'),
         api.get('/trust-accounts').catch(() => ({ data: [] })),
@@ -66,7 +68,7 @@ export const FinanceiroPremium = () => {
       setTrustAccounts(trustAccountsRes.data);
       setFinancialRecords(financialRes.data);
     } catch (error) {
-      // Error loading financial data
+      setError(error.response?.data?.detail || 'Não foi possível carregar os dados financeiros.');
     } finally {
       setLoading(false);
     }
@@ -107,16 +109,18 @@ export const FinanceiroPremium = () => {
     }
   };
 
-  if (loading || !analytics) {
+  if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 mx-auto mb-4"
-                 style={{ borderColor: premiumTheme.gold.matte }} />
-            <p style={{ color: premiumTheme.text.secondary }}>Carregando dados financeiros...</p>
-          </div>
-        </div>
+        <div className="flex items-center justify-center min-h-[60vh]"><div className="text-center"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 mx-auto mb-4" style={{ borderColor: premiumTheme.gold.matte }} /><p style={{ color: premiumTheme.text.secondary }}>Carregando dados financeiros...</p></div></div>
+      </Layout>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <Layout>
+        <div className="max-w-xl mx-auto mt-16 text-center p-8 bg-[#1E1E1E] border border-red-500/40 rounded-xl"><AlertCircle size={42} className="mx-auto mb-4 text-red-400" /><h2 className="text-xl font-bold mb-2">Não foi possível carregar o Financeiro</h2><p className="text-[#F5F5F5]/60 mb-5">{error || 'Tente novamente em alguns instantes.'}</p><button onClick={loadFinancialData} className="px-5 py-3 bg-[#D4AF37] text-[#121212] font-bold rounded-lg">Tentar novamente</button></div>
       </Layout>
     );
   }
@@ -138,6 +142,8 @@ export const FinanceiroPremium = () => {
   return (
     <Layout>
       <div className="max-w-[1600px] mx-auto space-y-8" data-testid="financeiro-premium-page">
+        {error && <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-300">{error}</div>}
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
