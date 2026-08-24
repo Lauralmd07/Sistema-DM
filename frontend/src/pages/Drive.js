@@ -31,6 +31,8 @@ export const Drive = () => {
     reference_id: '',
   });
   const [uploadFile, setUploadFile] = useState(null);
+  const [error, setError] = useState('');
+  const [viewingLoading, setViewingLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -41,7 +43,7 @@ export const Drive = () => {
       setFolders(foldersRes.data);
       setDocuments(documentsRes.data);
     } catch (error) {
-      // Error loading data
+      setError(error.response?.data?.detail || 'Não foi possível carregar as pastas e documentos.');
     } finally {
       setLoading(false);
     }
@@ -54,12 +56,13 @@ export const Drive = () => {
   const handleCreateFolder = async (e) => {
     e.preventDefault();
     try {
+      setError('');
       await api.post('/folders', folderFormData);
       await loadData();
       setShowFolderForm(false);
       setFolderFormData({ name: '', type: 'client', reference_id: '' });
     } catch (error) {
-      alert('Erro ao criar pasta');
+      setError(error.response?.data?.detail || 'Não foi possível criar a pasta.');
     }
   };
 
@@ -68,6 +71,7 @@ export const Drive = () => {
     if (!uploadFile || !selectedFolder) return;
 
     try {
+      setError('');
       const formData = new FormData();
       formData.append('folder_id', selectedFolder);
       formData.append('file', uploadFile);
@@ -81,7 +85,7 @@ export const Drive = () => {
       setUploadFile(null);
       setSelectedFolder(null);
     } catch (error) {
-      alert('Erro ao fazer upload do documento');
+      setError(error.response?.data?.detail || 'Não foi possível enviar o documento.');
     }
   };
 
@@ -92,7 +96,7 @@ export const Drive = () => {
       await api.delete(`/folders/${folderId}`);
       await loadData();
     } catch (error) {
-      alert('Erro ao excluir pasta');
+      setError(error.response?.data?.detail || 'Não foi possível excluir a pasta.');
     }
   };
 
@@ -103,7 +107,20 @@ export const Drive = () => {
       await api.delete(`/documents/${documentId}`);
       await loadData();
     } catch (error) {
-      alert('Erro ao excluir documento');
+      setError(error.response?.data?.detail || 'Não foi possível excluir o documento.');
+    }
+  };
+
+  const handleViewDocument = async (doc) => {
+    try {
+      setError('');
+      setViewingLoading(true);
+      const { data } = await api.get(`/documents/${doc.id}`);
+      setViewingDocument(data);
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Não foi possível abrir o documento.');
+    } finally {
+      setViewingLoading(false);
     }
   };
 
@@ -180,6 +197,8 @@ export const Drive = () => {
             </button>
           </div>
         </div>
+
+        {error && <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-300">{error}</div>}
 
         {loading ? (
           <p className="text-center text-[#F5F5F5]/60 py-8">Carregando...</p>
@@ -270,7 +289,9 @@ export const Drive = () => {
                               </div>
                               <div className="flex space-x-2">
                                 <button
-                                  onClick={() => setViewingDocument(doc)}
+                                  onClick={() => handleViewDocument(doc)}
+                                  disabled={viewingLoading}
+                                  title={viewingLoading ? 'Abrindo...' : 'Ver documento'}
                                   className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] rounded text-sm font-medium transition-colors"
                                 >
                                   <Eye size={14} />
