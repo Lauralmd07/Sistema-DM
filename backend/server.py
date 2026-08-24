@@ -6,6 +6,7 @@ import logging
 import os
 import secrets
 import uuid
+from urllib.parse import urlparse
 
 import bcrypt
 import jwt
@@ -563,8 +564,18 @@ async def health():
 
 app.include_router(api_router)
 
-frontend_url = os.environ.get("FRONTEND_URL", "https://lauralmd07.github.io/Sistema-DM,https://sistema-dm-1.onrender.com,http://localhost:3000,http://localhost:5173")
-allowed_origins = [origin.strip().rstrip("/") for origin in frontend_url.split(",") if origin.strip()]
+frontend_url = os.environ.get("FRONTEND_URL", "https://lauralmd07.github.io,https://sistema-dm-1.onrender.com,http://localhost:3000,http://localhost:5173")
+
+def normalize_origin(value: str) -> str:
+    value = value.strip().rstrip("/")
+    parsed = urlparse(value)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return value
+
+allowed_origins = list(dict.fromkeys(
+    normalize_origin(origin) for origin in frontend_url.split(",") if origin.strip()
+))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
