@@ -53,19 +53,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(user_id: str, email: str):
-    return jwt.encode(
-        {"sub": user_id, "email": email, "type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=15)},
-        JWT_SECRET,
-        algorithm=JWT_ALGORITHM,
-    )
+    return jwt.encode({"sub": user_id, "email": email, "type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=15)}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def create_refresh_token(user_id: str):
-    return jwt.encode(
-        {"sub": user_id, "type": "refresh", "exp": datetime.now(timezone.utc) + timedelta(days=7)},
-        JWT_SECRET,
-        algorithm=JWT_ALGORITHM,
-    )
+    return jwt.encode({"sub": user_id, "type": "refresh", "exp": datetime.now(timezone.utc) + timedelta(days=7)}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
@@ -161,15 +153,7 @@ async def register(user_data: UserCreate, response: Response):
         raise HTTPException(status_code=400, detail="Email already registered")
     user_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc)
-    user_doc = {
-        "id": user_id,
-        "name": user_data.name.strip(),
-        "email": email,
-        "password_hash": hash_password(user_data.password),
-        "role": "lawyer",
-        "created_at": created_at,
-        "auth_provider": "password",
-    }
+    user_doc = {"id": user_id, "name": user_data.name.strip(), "email": email, "password_hash": hash_password(user_data.password), "role": "lawyer", "created_at": created_at, "auth_provider": "password"}
     await db.users.insert_one(user_doc)
     set_auth_cookies(response, create_access_token(user_id, email), create_refresh_token(user_id))
     return User(id=user_id, name=user_doc["name"], email=email, role="lawyer", created_at=created_at)
@@ -179,9 +163,7 @@ async def register(user_data: UserCreate, response: Response):
 async def login(credentials: UserLogin, response: Response):
     email = str(credentials.email).lower()
     user = await db.users.find_one({"email": email})
-    if not user or not user.get("password_hash"):
-        raise HTTPException(status_code=401, detail="Credenciais inválidas")
-    if not verify_password(credentials.password, user["password_hash"]):
+    if not user or not user.get("password_hash") or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     set_auth_cookies(response, create_access_token(user["id"], user["email"]), create_refresh_token(user["id"]))
     return User(id=user["id"], name=user["name"], email=user["email"], role=user["role"], created_at=user["created_at"])
@@ -207,15 +189,7 @@ async def google_login(data: GoogleLogin, response: Response):
         await db.users.update_one({"id": user["id"]}, {"$set": {"google_sub": google_sub, "auth_provider": "google"}})
         user["google_sub"] = google_sub
     else:
-        user = {
-            "id": str(uuid.uuid4()),
-            "name": google_user.get("name") or email.split("@")[0],
-            "email": email,
-            "google_sub": google_sub,
-            "auth_provider": "google",
-            "role": "lawyer",
-            "created_at": datetime.now(timezone.utc),
-        }
+        user = {"id": str(uuid.uuid4()), "name": google_user.get("name") or email.split("@")[0], "email": email, "google_sub": google_sub, "auth_provider": "google", "role": "lawyer", "created_at": datetime.now(timezone.utc)}
         await db.users.insert_one(user.copy())
     set_auth_cookies(response, create_access_token(user["id"], user["email"]), create_refresh_token(user["id"]))
     return User(id=user["id"], name=user["name"], email=user["email"], role=user["role"], created_at=user["created_at"])
@@ -522,29 +496,8 @@ async def analytics_dashboard(current_user: dict = Depends(get_current_user)):
     monthly_trend = []
     for month, values in sorted(by_month.items()):
         month_profit = values["income"] - values["expense"]
-        monthly_trend.append({
-            "month": month,
-            "income": values["income"],
-            "expense": values["expense"],
-            "revenue": values["income"],
-            "expenses": values["expense"],
-            "profit": month_profit,
-        })
-    alerts = {"overdue_financial": 0, "trust_reconciliation_pending": 0}
-    return {
-        "kpis": {
-            "total_income": income,
-            "total_expenses": expense,
-            "balance": profit,
-            "income": income,
-            "expenses": expense,
-            "total_revenue": income,
-            "net_profit": profit,
-            "profit_margin": margin,
-        },
-        "monthly_trend": monthly_trend,
-        "alerts": alerts,
-    }
+        monthly_trend.append({"month": month, "income": values["income"], "expense": values["expense"], "revenue": values["income"], "expenses": values["expense"], "profit": month_profit})
+    return {"kpis": {"total_income": income, "total_expenses": expense, "balance": profit, "income": income, "expenses": expense, "total_revenue": income, "net_profit": profit, "profit_margin": margin}, "monthly_trend": monthly_trend, "alerts": {"overdue_financial": 0, "trust_reconciliation_pending": 0}}
 
 
 @api_router.get("/")
@@ -564,7 +517,7 @@ async def health():
 
 app.include_router(api_router)
 
-frontend_url = os.environ.get("FRONTEND_URL", "https://lauralmd07.github.io,https://sistema-dm-1.onrender.com,http://localhost:3000,http://localhost:5173")
+frontend_url = os.environ.get("FRONTEND_URL", "https://lauralmd07.github.io,https://sistema-dm.onrender.com,https://sistema-dm-1.onrender.com,http://localhost:3000,http://localhost:5173")
 
 def normalize_origin(value: str) -> str:
     value = value.strip().rstrip("/")
@@ -573,16 +526,8 @@ def normalize_origin(value: str) -> str:
         return f"{parsed.scheme}://{parsed.netloc}"
     return value
 
-allowed_origins = list(dict.fromkeys(
-    normalize_origin(origin) for origin in frontend_url.split(",") if origin.strip()
-))
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-)
+allowed_origins = list(dict.fromkeys(normalize_origin(origin) for origin in frontend_url.split(",") if origin.strip()))
+app.add_middleware(CORSMiddleware, allow_origins=allowed_origins, allow_credentials=True, allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
 
 @app.on_event("startup")
@@ -595,6 +540,7 @@ async def startup_event():
     await db.client_documents.create_index([("owner_id", 1), ("client_id", 1), ("created_at", -1)])
     await db.appointments.create_index([("owner_id", 1), ("date", 1), ("time", 1)])
     await db.processes.create_index([("owner_id", 1), ("status", 1)])
+    await db.deadlines.create_index([("owner_id", 1), ("date", 1), ("time", 1)])
     await db.folders.create_index([("owner_id", 1), ("created_at", -1)])
     await db.documents.create_index([("owner_id", 1), ("folder_id", 1), ("created_at", -1)])
     await db.financial_records.create_index([("date", -1)])
@@ -605,15 +551,7 @@ async def startup_event():
         if len(admin_password) < 8:
             logger.warning("ADMIN_PASSWORD is too short; admin bootstrap skipped")
         elif not await db.users.find_one({"email": admin_email}):
-            admin = {
-                "id": str(uuid.uuid4()),
-                "name": os.environ.get("ADMIN_NAME", "Administrador").strip() or "Administrador",
-                "email": admin_email,
-                "password_hash": hash_password(admin_password),
-                "role": "admin",
-                "created_at": datetime.now(timezone.utc),
-                "auth_provider": "password",
-            }
+            admin = {"id": str(uuid.uuid4()), "name": os.environ.get("ADMIN_NAME", "Administrador").strip() or "Administrador", "email": admin_email, "password_hash": hash_password(admin_password), "role": "admin", "created_at": datetime.now(timezone.utc), "auth_provider": "password"}
             await db.users.insert_one(admin)
             logger.info("Admin account bootstrapped from environment")
 
@@ -621,3 +559,25 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     client.close()
+
+
+# Compatibility loader: the Render service may start either server:app or gridfs_app:app.
+# Loading the extended modules here guarantees the same API surface in both cases.
+def _load_extended_routes():
+    paths = {
+        "/api/appointments", "/api/processes", "/api/documents", "/api/documents/upload",
+    }
+    app.router.routes[:] = [
+        route for route in app.router.routes
+        if getattr(route, "path", "") not in paths and not any(
+            getattr(route, "path", "").startswith(prefix)
+            for prefix in ("/api/appointments/", "/api/processes/", "/api/documents/", "/api/clients/")
+        )
+    ]
+    try:
+        import gridfs_app  # noqa: F401
+    except Exception:
+        logger.exception("Failed to load extended API modules")
+
+
+_load_extended_routes()
