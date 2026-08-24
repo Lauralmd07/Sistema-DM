@@ -201,6 +201,7 @@ export const Processos = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [activeId, setActiveId] = useState(null);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     client_number: '',
     cpf: '',
@@ -221,7 +222,7 @@ export const Processos = () => {
       const { data } = await api.get('/processes');
       setProcesses(data);
     } catch (error) {
-      // Error handled silently
+      setError(error.response?.data?.detail || 'Não foi possível carregar os processos.');
     } finally {
       setLoading(false);
     }
@@ -234,12 +235,13 @@ export const Processos = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setError('');
       await api.post('/processes', formData);
       await loadProcesses();
       setShowForm(false);
       resetForm();
     } catch (error) {
-      alert('Erro ao criar processo');
+      setError(error.response?.data?.detail || 'Não foi possível criar o processo.');
     }
   };
 
@@ -277,7 +279,7 @@ export const Processos = () => {
           await api.put(`/processes/${activeProcess.id}`, { status: over.id });
           await loadProcesses();
         } catch (error) {
-          // Error updating status - retry may be needed
+          setError(error.response?.data?.detail || 'Não foi possível atualizar o status do processo.');
         }
       }
     }
@@ -288,7 +290,7 @@ export const Processos = () => {
       await api.put(`/processes/${id}`, updates);
       await loadProcesses();
     } catch (error) {
-      // Error updating process
+      setError(error.response?.data?.detail || 'Não foi possível atualizar o processo.');
     }
   };
 
@@ -318,6 +320,8 @@ export const Processos = () => {
             <span>Novo Processo</span>
           </button>
         </div>
+
+        {error && <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-300">{error}</div>}
 
         {/* Kanban Board */}
         {loading ? (
