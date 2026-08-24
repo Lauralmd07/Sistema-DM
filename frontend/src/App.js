@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
@@ -12,14 +12,10 @@ import { Clientes } from './pages/Clientes';
 import { FinanceiroPremium } from './pages/FinanceiroPremium';
 import './App.css';
 
-const isGitHubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
-const Router = isGitHubPages ? HashRouter : BrowserRouter;
-const routerProps = isGitHubPages ? {} : { basename: '/' };
-
 function App() {
   return (
     <AuthProvider>
-      <Router {...routerProps}>
+      <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -32,7 +28,7 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Router>
+      </HashRouter>
     </AuthProvider>
   );
 }
