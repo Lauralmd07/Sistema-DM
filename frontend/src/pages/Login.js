@@ -9,10 +9,18 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const googleButtonRef = useRef(null);
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [authLoading, user, navigate]);
+
+  useEffect(() => {
+    if (authLoading || user) return undefined;
+
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
     if (!clientId) {
@@ -41,7 +49,7 @@ export const Login = () => {
           const result = await loginWithGoogle(response.credential);
 
           if (result.success) {
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true });
           } else {
             setError(result.error);
           }
@@ -51,19 +59,15 @@ export const Login = () => {
       });
 
       googleButtonRef.current.innerHTML = '';
-
-      window.google.accounts.id.renderButton(
-        googleButtonRef.current,
-        {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'signin_with',
-          shape: 'rectangular',
-          width: 352,
-          logo_alignment: 'left',
-        }
-      );
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        width: 352,
+        logo_alignment: 'left',
+      });
     };
 
     if (!document.querySelector('script[data-google-gsi]')) {
@@ -78,11 +82,9 @@ export const Login = () => {
     renderGoogleButton();
 
     return () => {
-      if (timer) {
-        window.clearTimeout(timer);
-      }
+      if (timer) window.clearTimeout(timer);
     };
-  }, [loginWithGoogle, navigate]);
+  }, [authLoading, user, loginWithGoogle, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -92,13 +94,21 @@ export const Login = () => {
     const result = await login(email, password);
 
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } else {
       setError(result.error);
     }
 
     setLoading(false);
   };
+
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center p-4">
+        <div className="text-[#D4AF37] text-xl">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#121212] flex items-center justify-center p-4">
@@ -123,36 +133,15 @@ export const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                data-testid="login-email-input"
-                className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all"
-                placeholder="seu@email.com"
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required data-testid="login-email-input" className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all" placeholder="seu@email.com" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-[#F5F5F5] mb-2">Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                data-testid="login-password-input"
-                className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all"
-                placeholder="••••••••"
-              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required data-testid="login-password-input" className="w-full px-4 py-3 bg-[#2A2A2A] border border-[#3A3A3A] rounded-lg text-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] transition-all" placeholder="••••••••" />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              data-testid="login-submit-btn"
-              className="w-full py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button type="submit" disabled={loading} data-testid="login-submit-btn" className="w-full py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-[#121212] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
@@ -163,18 +152,12 @@ export const Login = () => {
             <div className="h-px flex-1 bg-[#3A3A3A]" />
           </div>
 
-          <div
-            ref={googleButtonRef}
-            className="min-h-[40px] flex justify-center"
-            aria-label="Entrar com Google"
-          />
+          <div ref={googleButtonRef} className="min-h-[40px] flex justify-center" aria-label="Entrar com Google" />
 
           <div className="mt-6 text-center">
             <p className="text-[#F5F5F5]/60 text-sm">
               Não tem uma conta?{' '}
-              <Link to="/register" className="text-[#D4AF37] hover:text-[#E5C158] font-medium">
-                Registre-se
-              </Link>
+              <Link to="/register" className="text-[#D4AF37] hover:text-[#E5C158] font-medium">Registre-se</Link>
             </p>
           </div>
         </div>
