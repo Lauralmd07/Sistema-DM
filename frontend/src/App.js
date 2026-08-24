@@ -27,7 +27,7 @@ function App() {
           <Route path="/processos" element={<ProtectedRoute><Processos /></ProtectedRoute>} />
           <Route path="/drive" element={<ProtectedRoute><Drive /></ProtectedRoute>} />
           <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
-          <Route path="/financeiro" element={<ProtectedRoute><FinanceiroPremium /></ProtectedRoute>} />
+          <Route path="/financeiro" element={<ProtectedRoute adminOnly><FinanceiroPremium /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
