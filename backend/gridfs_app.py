@@ -10,6 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 import server
 import appointments  # Registers the agenda API on the shared FastAPI app.
 import deadlines  # Registers the deadlines API on the shared FastAPI app.
+from routes import processes  # Registers the authenticated process API.
 
 app = server.app
 db = server.db
