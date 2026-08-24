@@ -22,7 +22,6 @@ def normalize_process(data: dict, owner_id: str, process_id: str | None = None, 
     status = str(data.get("status", existing.get("status", "new")) or "new").strip().lower()
     timeline = data.get("timeline", existing.get("timeline", [])) or []
     judge_sentence = str(data.get("judge_sentence", existing.get("judge_sentence", "")) or "")
-
     if not client_number:
         raise HTTPException(status_code=422, detail="Número do cliente é obrigatório")
     if not cpf:
@@ -35,20 +34,7 @@ def normalize_process(data: dict, owner_id: str, process_id: str | None = None, 
         raise HTTPException(status_code=422, detail="Status de processo inválido")
     if not isinstance(timeline, list):
         raise HTTPException(status_code=422, detail="Linha do tempo inválida")
-
-    return {
-        "id": process_id or str(uuid.uuid4()),
-        "owner_id": owner_id,
-        "client_number": client_number,
-        "cpf": cpf,
-        "action_type": action_type,
-        "description": description,
-        "status": status,
-        "timeline": timeline,
-        "judge_sentence": judge_sentence,
-        "created_at": existing.get("created_at", datetime.now(timezone.utc)),
-        "updated_at": datetime.now(timezone.utc),
-    }
+    return {"id": process_id or str(uuid.uuid4()), "owner_id": owner_id, "client_number": client_number, "cpf": cpf, "action_type": action_type, "description": description, "status": status, "timeline": timeline, "judge_sentence": judge_sentence, "created_at": existing.get("created_at", datetime.now(timezone.utc)), "updated_at": datetime.now(timezone.utc)}
 
 
 @router.get("")
@@ -82,3 +68,7 @@ async def delete_process(process_id: str, current_user: dict = Depends(get_curre
     if not result.deleted_count:
         raise HTTPException(status_code=404, detail="Processo não encontrado")
     return {"success": True}
+
+
+# Register the router on the shared application so importing this module is sufficient.
+server.app.include_router(router)
