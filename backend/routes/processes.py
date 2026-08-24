@@ -34,7 +34,31 @@ def normalize_process(data: dict, owner_id: str, process_id: str | None = None, 
         raise HTTPException(status_code=422, detail="Status de processo inválido")
     if not isinstance(timeline, list):
         raise HTTPException(status_code=422, detail="Linha do tempo inválida")
-    return {"id": process_id or str(uuid.uuid4()), "owner_id": owner_id, "client_number": client_number, "cpf": cpf, "action_type": action_type, "description": description, "status": status, "timeline": timeline, "judge_sentence": judge_sentence, "created_at": existing.get("created_at", datetime.now(timezone.utc)), "updated_at": datetime.now(timezone.utc)}
+    return {
+        "id": process_id or str(uuid.uuid4()),
+        "owner_id": owner_id,
+        "client_number": client_number,
+        "cpf": cpf,
+        "action_type": action_type,
+        "description": description,
+        "status": status,
+        "timeline": timeline,
+        "judge_sentence": judge_sentence,
+        "created_at": existing.get("created_at", datetime.now(timezone.utc)),
+        "updated_at": datetime.now(timezone.utc),
+    }
+
+
+def remove_legacy_process_routes():
+    """Remove the duplicate handlers declared in server.py before registering the canonical router."""
+    prefixes = ("/api/processes",)
+    server.app.router.routes[:] = [
+        route for route in server.app.router.routes
+        if not any(getattr(route, "path", "").startswith(prefix) for prefix in prefixes)
+    ]
+
+
+remove_legacy_process_routes()
 
 
 @router.get("")
@@ -70,5 +94,4 @@ async def delete_process(process_id: str, current_user: dict = Depends(get_curre
     return {"success": True}
 
 
-# Register the router on the shared application so importing this module is sufficient.
 server.app.include_router(router)
