@@ -8,10 +8,17 @@ export const Layout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/login', { replace: true });
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+      setLoggingOut(false);
+    }
   };
 
   const menuItems = [
@@ -48,9 +55,24 @@ export const Layout = ({ children }) => {
             return <Link key={item.path} to={item.path} data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${isActive ? 'bg-[#D4AF37] text-[#121212]' : 'hover:bg-[#2A2A2A] text-[#F5F5F5]'}`}><Icon size={20}/>{sidebarOpen && <span className="font-medium">{item.label}</span>}</Link>;
           })}
         </nav>
-        <div className="p-4 border-t border-[#3A3A3A]"><button onClick={handleLogout} data-testid="logout-btn" className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-red-900/20 text-red-400"><LogOut size={20}/>{sidebarOpen && <span className="font-medium">Sair</span>}</button></div>
+        <div className="p-4 border-t border-[#3A3A3A]">
+          <button onClick={handleLogout} disabled={loggingOut} data-testid="logout-btn" aria-label="Sair da conta" className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-red-900/20 text-red-400 disabled:opacity-50 disabled:cursor-not-allowed">
+            <LogOut size={20}/>{sidebarOpen && <span className="font-medium">{loggingOut ? 'Saindo...' : 'Sair'}</span>}
+          </button>
+        </div>
       </aside>
-      <main className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}><div className="min-h-screen p-8">{children}</div></main>
+
+      <main className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+        <div className="min-h-screen p-8">
+          <div className="flex justify-end mb-4">
+            <button onClick={handleLogout} disabled={loggingOut} data-testid="header-logout-btn" aria-label="Sair da conta" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-red-500/40 text-red-400 hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              <LogOut size={18} />
+              {loggingOut ? 'Saindo...' : 'Sair'}
+            </button>
+          </div>
+          {children}
+        </div>
+      </main>
     </div>
   );
 };
