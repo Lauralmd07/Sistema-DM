@@ -33,7 +33,7 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "").strip() or secrets.token_urlsafe(6
 JWT_ALGORITHM = "HS256"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 
-app = FastAPI(title="Sistema DM API", version="1.3.0")
+app = FastAPI(title="Sistema DM API", version="1.3.1")
 app.state.db = db
 app.state.jwt_secret = JWT_SECRET
 api_router = APIRouter(prefix="/api")
@@ -146,6 +146,12 @@ class ClientCreate(BaseModel):
     notes: Optional[str] = None
 
 
+@api_router.get("/config")
+async def public_config():
+    # OAuth client IDs are public browser configuration, not secrets.
+    return {"google_client_id": GOOGLE_CLIENT_ID or None}
+
+
 @api_router.post("/auth/register", response_model=User)
 async def register(user_data: UserCreate, response: Response):
     email = str(user_data.email).lower()
@@ -245,11 +251,6 @@ async def update_client(client_id: str, data: ClientCreate, current_user: dict =
     if not result.matched_count:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
     return clean(await db.clients.find_one({"id": client_id, "owner_id": current_user["id"]}))
-
-
-@api_router.put("/clients/{client_id}/documents")
-async def compatibility_client_documents_put(client_id: str):
-    raise HTTPException(status_code=405, detail="Use POST /api/clients/{client_id}/documents para enviar um documento")
 
 
 @api_router.delete("/clients/{client_id}")
@@ -503,7 +504,7 @@ async def analytics_dashboard(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "API Online", "version": "1.3.0"}
+    return {"message": "API Online", "version": "1.3.1"}
 
 
 @api_router.get("/health")
