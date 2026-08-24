@@ -6,6 +6,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { Agenda } from './pages/Agenda';
+import { PrazosAudiencias } from './pages/PrazosAudiencias';
 import { Processos } from './pages/Processos';
 import { Drive } from './pages/Drive';
 import { Clientes } from './pages/Clientes';
@@ -21,6 +22,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+          <Route path="/prazos-audiencias" element={<ProtectedRoute><PrazosAudiencias /></ProtectedRoute>} />
           <Route path="/processos" element={<ProtectedRoute><Processos /></ProtectedRoute>} />
           <Route path="/drive" element={<ProtectedRoute><Drive /></ProtectedRoute>} />
           <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
