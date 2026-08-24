@@ -33,7 +33,7 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "").strip() or secrets.token_urlsafe(6
 JWT_ALGORITHM = "HS256"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 
-app = FastAPI(title="Sistema DM API", version="1.2.0")
+app = FastAPI(title="Sistema DM API", version="1.3.0")
 app.state.db = db
 app.state.jwt_secret = JWT_SECRET
 api_router = APIRouter(prefix="/api")
@@ -247,6 +247,11 @@ async def update_client(client_id: str, data: ClientCreate, current_user: dict =
     return clean(await db.clients.find_one({"id": client_id, "owner_id": current_user["id"]}))
 
 
+@api_router.put("/clients/{client_id}/documents")
+async def compatibility_client_documents_put(client_id: str):
+    raise HTTPException(status_code=405, detail="Use POST /api/clients/{client_id}/documents para enviar um documento")
+
+
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.clients.delete_one({"id": client_id, "owner_id": current_user["id"]})
@@ -293,12 +298,12 @@ async def delete_client_document(client_id: str, document_id: str, current_user:
 
 
 @api_router.get("/appointments")
-async def list_appointments(current_user: dict = Depends(get_current_user)):
+async def legacy_appointments_get(current_user: dict = Depends(get_current_user)):
     return [clean(x) async for x in db.appointments.find({"owner_id": current_user["id"]}).sort([("date", 1), ("time", 1)])]
 
 
 @api_router.post("/appointments")
-async def create_appointment(request: Request, current_user: dict = Depends(get_current_user)):
+async def legacy_appointments_post(request: Request, current_user: dict = Depends(get_current_user)):
     data = await json_body(request)
     required = ["type", "client_name", "subject", "date", "time"]
     missing = [x for x in required if not data.get(x)]
@@ -310,7 +315,7 @@ async def create_appointment(request: Request, current_user: dict = Depends(get_
 
 
 @api_router.put("/appointments/{appointment_id}")
-async def update_appointment(appointment_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+async def legacy_appointments_put(appointment_id: str, request: Request, current_user: dict = Depends(get_current_user)):
     data = await json_body(request)
     data.pop("id", None)
     data.pop("owner_id", None)
@@ -322,7 +327,7 @@ async def update_appointment(appointment_id: str, request: Request, current_user
 
 
 @api_router.delete("/appointments/{appointment_id}")
-async def delete_appointment(appointment_id: str, current_user: dict = Depends(get_current_user)):
+async def legacy_appointments_delete(appointment_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.appointments.delete_one({"id": appointment_id, "owner_id": current_user["id"]})
     if not result.deleted_count:
         raise HTTPException(status_code=404, detail="Compromisso não encontrado")
@@ -330,12 +335,12 @@ async def delete_appointment(appointment_id: str, current_user: dict = Depends(g
 
 
 @api_router.get("/processes")
-async def list_processes(current_user: dict = Depends(get_current_user)):
+async def legacy_processes_get(current_user: dict = Depends(get_current_user)):
     return [clean(x) async for x in db.processes.find({"owner_id": current_user["id"]}).sort("created_at", -1)]
 
 
 @api_router.post("/processes")
-async def create_process(request: Request, current_user: dict = Depends(get_current_user)):
+async def legacy_processes_post(request: Request, current_user: dict = Depends(get_current_user)):
     data = await json_body(request)
     required = ["client_number", "cpf", "action_type", "description"]
     missing = [x for x in required if not data.get(x)]
@@ -351,7 +356,7 @@ async def create_process(request: Request, current_user: dict = Depends(get_curr
 
 
 @api_router.put("/processes/{process_id}")
-async def update_process(process_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+async def legacy_processes_put(process_id: str, request: Request, current_user: dict = Depends(get_current_user)):
     data = await json_body(request)
     data.pop("id", None)
     data.pop("owner_id", None)
@@ -366,7 +371,7 @@ async def update_process(process_id: str, request: Request, current_user: dict =
 
 
 @api_router.delete("/processes/{process_id}")
-async def delete_process(process_id: str, current_user: dict = Depends(get_current_user)):
+async def legacy_processes_delete(process_id: str, current_user: dict = Depends(get_current_user)):
     result = await db.processes.delete_one({"id": process_id, "owner_id": current_user["id"]})
     if not result.deleted_count:
         raise HTTPException(status_code=404, detail="Processo não encontrado")
@@ -384,11 +389,7 @@ async def create_folder(request: Request, current_user: dict = Depends(get_curre
     name = str(data.get("name", "")).strip()
     if not name:
         raise HTTPException(status_code=422, detail="Nome da pasta é obrigatório")
-    data["name"] = name
-    data.pop("id", None)
-    data.pop("owner_id", None)
-    data.pop("created_at", None)
-    doc = {**data, "id": str(uuid.uuid4()), "owner_id": current_user["id"], "created_at": datetime.now(timezone.utc)}
+    doc = {"id": str(uuid.uuid4()), "name": name, "owner_id": current_user["id"], "created_at": datetime.now(timezone.utc)}
     await db.folders.insert_one(doc)
     return clean(doc)
 
@@ -502,7 +503,7 @@ async def analytics_dashboard(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "API Online", "version": "1.2.0"}
+    return {"message": "API Online", "version": "1.3.0"}
 
 
 @api_router.get("/health")
@@ -559,25 +560,3 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     client.close()
-
-
-# Compatibility loader: the Render service may start either server:app or gridfs_app:app.
-# Loading the extended modules here guarantees the same API surface in both cases.
-def _load_extended_routes():
-    paths = {
-        "/api/appointments", "/api/processes", "/api/documents", "/api/documents/upload",
-    }
-    app.router.routes[:] = [
-        route for route in app.router.routes
-        if getattr(route, "path", "") not in paths and not any(
-            getattr(route, "path", "").startswith(prefix)
-            for prefix in ("/api/appointments/", "/api/processes/", "/api/documents/", "/api/clients/")
-        )
-    ]
-    try:
-        import gridfs_app  # noqa: F401
-    except Exception:
-        logger.exception("Failed to load extended API modules")
-
-
-_load_extended_routes()
