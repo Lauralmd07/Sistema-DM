@@ -130,11 +130,18 @@ export const FinanceiroPremium = () => {
   // Group records by month for table view
   const recordsByMonth = {};
   financialRecords.forEach(record => {
-    const month = record.date.substring(0, 7); // YYYY-MM
+    const date = typeof record.date === 'string' ? record.date : '';
+    const month = date.length >= 7 ? date.substring(0, 7) : 'Sem data';
+    const type = record.type === 'income' || record.type === 'expense' ? record.type : 'expense';
     if (!recordsByMonth[month]) {
       recordsByMonth[month] = { income: [], expense: [] };
     }
-    recordsByMonth[month][record.type].push(record);
+    recordsByMonth[month][type].push({
+      ...record,
+      amount: Number(record.amount) || 0,
+      date,
+      type,
+    });
   });
 
   const sortedMonths = Object.keys(recordsByMonth).sort().reverse();
