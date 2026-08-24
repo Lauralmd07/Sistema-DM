@@ -8,6 +8,7 @@ from fastapi import Depends, File, Form, HTTPException, UploadFile
 from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
 import server
+import appointments  # Registers the agenda API on the shared FastAPI app.
 
 app = server.app
 db = server.db
@@ -254,10 +255,3 @@ async def delete_document_gridfs(document_id: str, current_user: dict = Depends(
     if not result.deleted_count:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     return {"success": True}
-
-
-@app.on_event("startup")
-async def gridfs_indexes():
-    await db.client_documents.create_index([("gridfs_id", 1)], sparse=True)
-    await db.documents.create_index([("gridfs_id", 1)], sparse=True)
-    logger.info("GridFS legal_files enabled")
