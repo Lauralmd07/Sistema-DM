@@ -563,7 +563,7 @@ async def health():
 
 app.include_router(api_router)
 
-frontend_url = os.environ.get("FRONTEND_URL", "https://lauralmd07.github.io/Sistema-DM,http://localhost:3000,http://localhost:5173")
+frontend_url = os.environ.get("FRONTEND_URL", "https://lauralmd07.github.io/Sistema-DM,https://sistema-dm-1.onrender.com,http://localhost:3000,http://localhost:5173")
 allowed_origins = [origin.strip().rstrip("/") for origin in frontend_url.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
