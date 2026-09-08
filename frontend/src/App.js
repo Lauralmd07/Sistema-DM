@@ -1,6 +1,6 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -12,6 +12,12 @@ import { Drive } from './pages/Drive';
 import { Clientes } from './pages/Clientes';
 import { FinanceiroPremium } from './pages/FinanceiroPremium';
 import './App.css';
+
+function HomeRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  return <Navigate to={user ? '/dashboard' : '/login'} replace />;
+}
 
 function App() {
   return (
@@ -27,8 +33,8 @@ function App() {
           <Route path="/drive" element={<ProtectedRoute><Drive /></ProtectedRoute>} />
           <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
           <Route path="/financeiro" element={<ProtectedRoute adminOnly><FinanceiroPremium /></ProtectedRoute>} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<HomeRedirect />} />
+          <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </HashRouter>
     </AuthProvider>
