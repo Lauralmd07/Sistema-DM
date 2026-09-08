@@ -23,29 +23,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install dependencies
         run: npm install
-
       - name: Build
         env:
           REACT_APP_API_URL: https://sistema-dm.onrender.com/api
           REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
         run: npm run build
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: frontend/build
-
   deploy:
     environment:
       name: github-pages
