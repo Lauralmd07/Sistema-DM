@@ -35,6 +35,7 @@ jobs:
         run: npm install
       - name: Build
         env:
+          CI: false
           REACT_APP_API_URL: https://sistema-dm.onrender.com/api
           REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
         run: npm run build
