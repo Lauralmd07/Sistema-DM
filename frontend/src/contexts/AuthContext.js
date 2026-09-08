@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');
@@ -16,23 +15,20 @@ const api = axios.create({
 });
 
 let refreshPromise = null;
-
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const original = error.config;
-    if (error.response?.status !== 401 || !original || original._retry || original.url?.includes('/auth/refresh')) {
-      return Promise.reject(error);
-    }
+    if (error.response?.status !== 401 || !original || original._retry || original.url?.includes('/auth/refresh')) return Promise.reject(error);
     original._retry = true;
     try {
       refreshPromise ||= api.post('/auth/refresh');
       await refreshPromise;
-      refreshPromise = null;
       return api(original);
     } catch (refreshError) {
-      refreshPromise = null;
       return Promise.reject(refreshError);
+    } finally {
+      refreshPromise = null;
     }
   }
 );
@@ -55,10 +51,10 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     try {
       setError(null);
-      const { data } = await api.post('/auth/login', { email, password });
+      const { data } = await api.post('/auth/login', { email: email.trim().toLowerCase(), password });
       setUser(data);
       return { success: true };
     } catch (err) {
@@ -66,9 +62,9 @@ export const AuthProvider = ({ children }) => {
       setError(errorMsg);
       return { success: false, error: errorMsg };
     }
-  };
+  }, []);
 
-  const loginWithGoogle = async (credential) => {
+  const loginWithGoogle = useCallback(async credential => {
     try {
       setError(null);
       const { data } = await api.post('/auth/google', { credential });
@@ -79,12 +75,12 @@ export const AuthProvider = ({ children }) => {
       setError(errorMsg);
       return { success: false, error: errorMsg };
     }
-  };
+  }, []);
 
-  const register = async (name, email, password, role = 'lawyer') => {
+  const register = useCallback(async (name, email, password) => {
     try {
       setError(null);
-      const { data } = await api.post('/auth/register', { name, email, password, role });
+      const { data } = await api.post('/auth/register', { name: name.trim(), email: email.trim().toLowerCase(), password });
       setUser(data);
       return { success: true };
     } catch (err) {
@@ -92,18 +88,15 @@ export const AuthProvider = ({ children }) => {
       setError(errorMsg);
       return { success: false, error: errorMsg };
     }
-  };
+  }, []);
 
-  const logout = async () => {
-    try { await api.post('/auth/logout'); } catch (err) { console.error(err); }
-    finally { setUser(null); }
-  };
+  const logout = useCallback(async () => {
+    try { await api.post('/auth/logout'); } catch (_) {}
+    setUser(null);
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, error, login, loginWithGoogle, register, logout, api }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({ user, loading, error, login, loginWithGoogle, register, logout, api }), [user, loading, error, login, loginWithGoogle, register, logout]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export default AuthContext;
